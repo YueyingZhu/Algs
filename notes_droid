@@ -1,0 +1,26 @@
+1. 创建并激活虚拟环境
+在您的终端中执行以下命令：
+
+（如果没有装venv 先装：sudo apt install python3-venv）
+python3 -m venv ~/Algs/droid/.venv
+source ~/Algs/droid/.venv/bin/activate
+
+python3-venv 提供了 venv 模块，它依赖系统内的 ensurepip 来自动安装 pip。
+没有这个模块时 python3 -m venv 会报错，因为 pip 无法注入到虚拟环境中。
+
+2. 安装 PyTorch（支持 CUDA 12.1）
+在(venv)状态下使用以下命令安装支持 CUDA 12.1 的 PyTorch 版本：
+
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+
+安装完成后，您可以验证安装的 PyTorch 是否支持 CUDA：
+
+python -c "import torch; print(torch.cuda.is_available())"
+
+因为发现这个包依赖：
+To run the code you will need ...
+
+    Inference: Running the demos will require a GPU with at least 11G of memory.
+
+    Training: Training requires a GPU with at least 24G of memory. We train on 4 x RTX-3090 GPUs.
+所以就暂停了因为我的显存是8GB的 不是很懂这个我要怎么跑才行 租服务器的话也不会租到3090吧。

@@ -1,0 +1,128 @@
+🧭 1. mapping 是后端的一部分吗？
+
+    是的，mapping 属于后端的一部分，具体体现在以下模块中：
+
+    滑动窗口优化（Sliding Window）：维护历史帧与地图点。
+
+    三角化（Triangulation）：前端计算初始深度，后端优化它。
+
+    边缘化（Marginalization）：清除旧帧，压缩状态维度。
+
+    地图管理（Map Manager）：追踪活跃点，移除失败点，维护稳定关键帧。
+
+✅ 检查项列表：如果前端出错频繁
+检查项	检测方法	表现症状
+图像是否未矫正/重畸变	检查图像是否是原始图，未使用 opencv remap 处理	patch 匹配全失败，特征数为 0
+calibration.json 参数错	核对 intrinsics, distortion, T_cam0_cam1, xi/alpha 是否合理	初始化失败，或前几帧突然崩溃
+timestamp 不连续 / 不对齐	检查图像与 IMU 是否对齐，时间间隔是否稳定	前几帧正常，后面严重漂移或断图
+图像噪声或曝光严重	直接查看图像样本，对比帧间亮度差异	跟踪点乱跳、不收敛
+频率不匹配或数据间断	用 evo_traj 或手动打印时间戳，分析帧率变化	VIO 长期不更新，窗口反复边缘化
+双目极线错配（Rectify失败）	使用 stereo_image_proc 检查左右图是否极线对齐	stereo outliers > 90%
+IMU bias 太离谱	IMU 标定不准，bias 初始化失败，参考 imu_calib.md	pose 随机漂移，scale 丢失
+
+ORB-SLAM3 / Basalt / VINS-Fusion 都要求 IMU 流稳定、延迟小
+
+export PATH=$PATH:~/.local/bin
+export PATH=/usr/local/cuda-12.2/bin:$PATH
+export LD_LIBRARY_PATH=/usr/local/cuda-12.2/lib64:$LD_LIBRARY_PATH
+export CMAKE_PREFIX_PATH=/usr/local:$CMAKE_PREFIX_PATH
+export ROS_PACKAGE_PATH=${ROS_PACKAGE_PATH}:/home/zyy/ORB_SLAM3/Examples_old/ROS
+export PATH=$HOME/basalt/build:$PATH
+source /opt/ros/noetic/setup.bash
+export PATH=/opt/ros/noetic/bin:$PATH
+source ~/Algs/vins/devel/setup.bash
+source ~/Algs/vins/devel/setup.bash
+source ~/Algs/kimera/devel/setup.bash
+export OpenCV_DIR=/opt/opencv-4.2.0/lib/cmake/opencv4
+export LD_LIBRARY_PATH=/opt/opencv-4.2.0/lib:$LD_LIBRARY_PATH
+export OpenCV_DIR=/opt/opencv-4.2.0/lib/cmake/opencv4
+export LD_LIBRARY_PATH=/opt/opencv-4.2.0/lib:$LD_LIBRARY_PATH
+export OpenCV_DIR=/opt/opencv-4.2.0/lib/cmake/opencv4
+export LD_LIBRARY_PATH=/opt/opencv-4.2.0/lib:$LD_LIBRARY_PATH
+export PATH=$PATH:/home/zyy/Algs/basalt/build
+source ~/Algs/kimera/devel/setup.bash
+export OpenCV_DIR=/opt/opencv-4.2.0/share/OpenCV
+
+1 Kimera
+2 DSO
+3 PL-SLAM
+4 Basalt
+5 Droid-SLAM
+6 ORB-SLAM3
+7 VINS-Mono
+8 OpenVINS
+9 MSCKF
+10 SVO2.0
+11 SchurVINS
+12 DM-VIO
+13 AirSLAM
+
+这个对话用于跑通orb3对于CERBERUS得到轨迹。1.更改compose文件挂载数据集；2.打开虚拟机检查编译；3.阅读文件架构，理解不同文件夹的作用，以及工作流程，特别要注意这个算法是stereo还是mono是有imu还是没有 是with loop还是without loop；4.添加配置文件，检查算法端的格式要求尤其是Tbc和Tcb的分别，找到可参考的文件做格式上的检查，然后搜索代码看看算法是否能兼容equistant畸变模型，然后计算得到标定文件。（以防你找不到 它们在/datasets/CERBERUS/calibration/下的内参和外参文件夹里 原始数据集提供的内外参是这样：imu_sensor_frame_to_cam0_sensor_frame:
+  pose:
+    x:  0.0452716
+    y:  -0.07270481
+    z:  0.02461546
+    roll:  -1.56726705684909
+    pitch: 0.00122117029896055
+    yaw:   3.13880406790684
+
+imu_sensor_frame_to_cam1_sensor_frame:
+  pose:
+    x:  -0.05429731
+    y:  -0.07303667
+    z:  0.02470164
+    roll:  -1.56918030608467
+    pitch: -0.000134300001005714
+    yaw:   -3.14042090330584
+image_width: 720
+image_height: 540
+camera_name: cam0_sensor_frame
+camera_matrix:
+  rows: 3
+  cols: 3
+  data: [347.071460037321, 0.0, 353.348326050556, 0.0, 347.206531326242, 262.473957726965, 0.0, 0.0, 1.0]
+distortion_model: equidistant
+distortion_coefficients:
+  rows: 1
+  cols: 4
+  data: [-0.0465616135172277, 0.0154916180194402, -0.0183727378173674, 0.00640885660693302]
+rectification_matrix:
+  rows: 3
+  cols: 3
+  data: [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]
+projection_matrix:
+  rows: 3
+  cols: 4
+  data: [347.071460037321, 0.0, 353.348326050556, 0.0, 0.0, 347.206531326242, 262.473957726965, 0.0, 0.0, 0.0, 1.0, 0.0] 和 image_width: 720
+image_height: 540
+camera_name: cam1_sensor_frame
+camera_matrix:
+  rows: 3
+  cols: 3
+  data: [347.546596134171, 0.0, 363.307025056206, 0.0, 347.99744359199, 272.565800571654, 0.0, 0.0, 1.0]
+distortion_model: equidistant
+distortion_coefficients:
+  rows: 1
+  cols: 4
+  data: [-0.0445453513806739, 0.0153734565187101, -0.0191317019617576, 0.00678111126815628]
+rectification_matrix:
+  rows: 3
+  cols: 3
+  data: [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]
+projection_matrix:
+  rows: 3
+  cols: 4
+  data: [347.546596134171, 0.0, 363.307025056206, 0.0, 0.0, 347.99744359199, 272.565800571654, 0.0, 0.0, 0.0, 1.0, 0.0]）随后找到格式相似的其他算法的标定文件进行验算，看看算出来的Tbc或者Tcb或者内参是否一致；5.漫长的配置文件添加和检查结束以后，或许需要重新编译，或许不需要，就要开始尝试运行了，首先先运行最好运行的seq7试试水，如果可以的话，写成一个.sh脚本保存在宿主机内，但是我用虚拟机运行，所以路径需要写虚拟机的，运行了单个没有GUI的seq以后，需要保存在/ws/results/CERBERUS/{mode}/${seq}/trajectory.txt 注意格式需要是tum格式。6.这个运行成功了以后首先检查轨迹的格式，和会不会偏离轨迹太远，用evo做seq=seq7
+cd /home/zyy/Algs/orb3/Results_orb3/CERBERUS/${mode}/${seq}
+evo_ape tum /home/zyy/Algs/svo2/Results_svo2/CERBERUS/stereo+imu/${seq}/gt_tum.txt trajectory.txt \
+    --align --t_max_diff 0.2 \
+    --plot --plot_mode xyz \
+    --save_results ape_results.zip \
+    --save_plot ape_plot.pdf
+evo_traj tum trajectory.txt /home/zyy/Algs/svo2/Results_svo2/CERBERUS/stereo+imu/${seq}/gt_tum.txt \
+    --ref /home/zyy/Algs/svo2/Results_svo2/CERBERUS/stereo+imu/${seq}/gt_tum.txt \
+    --align --t_max_diff 0.2 \
+    --plot --plot_mode xyz \
+    --save_plot traj_plot.pdf
+    其中要注意的是，我们的ref文件是存在于宿主机内的绝对位置，所以evo得在宿主机内完成，所以整体脚本可能是在宿主机里运行，通过docker exec orb3 bash -c "cd /ws && ./run_cerberus_single.sh seq7 stereo false"对容器内的脚本进行操作。得到结果以后，检查长度是否对得上，seq7的rmse超过1都是不正常的，一般来说都在0.2-0.5，如果这一步得到的结果不对，那就说明脚本或者标定有问题，这时候最好检查一下输出的log，查看有没有可疑的问题比如说算法有什么不兼容的地方，接下来检查标定文件，和已有的别的文件夹的标定文件做比较，得到的结果应该有很多相同的，全都修改完了以后重新进行上一步，得到轨迹。如果还是结果不对，根据问题重新检查文件，轨迹如果太短了说明只有中间一点时能得到轨迹，这时候可以尝试调松阈值，如果就是结果很差，和gt完全毫不相关的话，就可以找找标定的问题，注意打开轨迹文件看作用不大，因为evo会align所以轨迹就是起始点坐标系不一样的，所以反复找原因直到rmse在0-0.7这个时候就算成功了(第一次到这一步如果没有成功就暂停，我手动debug)；7.成功就可以尝试加GUI，但是要在注意有可能打断运行，所以可视化是不必须但是最好有的；8.接下来就写*all.sh脚本候，用一个脚本做全seq的trajectory和evo，并且记录evo结果；9.记得全过程要写成一个.md文档，方便复盘，这个文档要记录完成了什么文件（最终版），虚拟机内的指令pipeline，和精简的结果记录；10.删除过程文件，最后只需要两个运行脚本分别是single和all 可以自己选择是否gui；
+

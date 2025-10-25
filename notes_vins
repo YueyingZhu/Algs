@@ -1,0 +1,99 @@
+ VINS-Fusion 官方建议仅支持 Ubuntu 16.04/18.04 + ROS Kinetic/Melodic 的情况，Ubuntu 20.04 可兼容 VINS-Fusion，但需手动处理依赖项。Docker 非必需，但推荐作为隔离方式。
+✅ 方案1：源码直装 + 依赖修复（非Docker）
+优点：无需容器开销，调试和图像加速更方便
+缺点：初期配置略繁琐
+# 安装 ROS Noetic
+sudo apt install ros-noetic-desktop-full
+
+# 创建工作空间
+mkdir -p ~/Algs/vins/src && cd ~/Algs/vins/src
+git clone https://github.com/HKUST-Aerial-Robotics/VINS-Fusion.git
+cd ..
+catkin_make
+
+因为OpenCV在这里是默认使用3.x或者2.x 但是unbuntu20.04默认是4.x 为了不冲突我就不装载其他的版本了 所以这里就需要解决OpenCV的兼容问题
+因为其实问题是很多模块的名字原来叫CV_xx 但是4.x里面叫 cv::xx 所以可以打一个补丁 来整体转换一下冲突的模块的名字
+所以写了一个 ~/Algs/vins/src/replace_cv_macros.sh 里面就是define CV_xx 为 cv::xx
+cd ~/Algs/vins/src
+chmod +x replace_cv_macros.sh
+./replace_cv_macros.sh
+然后因为本地自己编译的opencv4.8 系统又自带一个4.2 所以编译的时候要指定版本 所以干脆写成一个~/Algs/vins/build.sh
+cd ~/Algs/vins/
+chmod +x build.sh
+./build.sh
+source ~/Algs/vins/devel/setup.bash 
+
+echo 'source ~/Algs/vins/devel/setup.bash' >> ~/.bashrc
+source ~/.bashrc
+这时候可以检查一下有没有source成功 
+echo $ROS_PACKAGE_PATH
+echo $ROS_PACKAGE_PATH | tr ':' '\n'
+如果成功了的话 输出里面就会包含 /home/zyy/Algs/vins/src
+然后继续检查 ros能不能识别到VINS-Fusion底下的包 以及它们都叫啥
+rospack profile
+rospack list | grep vins
+看到包的名字分别叫camera_models global_fusion loop_fusion vins
+camera_models /home/zyy/Algs/vins/src/VINS-Fusion/camera_models
+global_fusion /home/zyy/Algs/vins/src/VINS-Fusion/global_fusion
+loop_fusion /home/zyy/Algs/vins/src/VINS-Fusion/loop_fusion
+vins /home/zyy/Algs/vins/src/VINS-Fusion/vins_estimator
+检查项 | 结果
+vins_node 是否已编译生成 | ✅ 存在于 ~/Algs/vins/devel/lib/vins/
+roscd vins 是否能跳转 | ✅ 跳转到了 ~/Algs/vins/src/VINS-Fusion/vins_estimator/
+rospack list 是否包含 vins | ✅ 包含正确路径
+ROS_PACKAGE_PATH 环境变量 | ✅ 包含了 ~/Algs/vins/src
+setup.bash 是否已 source | ✅ 已执行
+现在编译成功了 但是
+    roslaunch vins vins_rviz.launch
+    rosrun vins vins_node ~/catkin_ws/src/VINS-Fusion/config/euroc/euroc_stereo_config.yaml 
+    (optional) rosrun loop_fusion loop_fusion_node ~/catkin_ws/src/VINS-Fusion/config/euroc/euroc_stereo_config.yaml 
+    rosbag play YOUR_DATASET_FOLDER/MH_01_easy.bag
+
+tmux source-file ~/.tmux.conf
+
+cd ~/Algs/vins
+chmod +x launch_vins_tmux.sh
+./launch_vins_tmux.sh
+
+chmod +x launch_vins_env.sh
+./launch_vins_env.sh
+
+
+✅ 如果你能做到这几件事
+    image_track 有图像
+    ROS INFO 显示已经跟踪了点
+    控制台输出不是零位姿和恒等四元数
+那说明系统正常运行
+
+Try this and build again
+find_package(OpenCV REQUIRED) => find_package(OpenCV3 REQUIRED)
+
+pkg-config --modversion opencv
+
+cmake .. \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_INSTALL_PREFIX=/opt/opencv-3.4.11 \
+  -DOPENCV_EXTRA_MODULES_PATH=~/Packages/opencv-3.4.11/opencv_contrib/modules \
+  -DBUILD_TESTS=OFF \
+  -DBUILD_PERF_TESTS=OFF \
+  -DBUILD_EXAMPLES=OFF
+make -j$(nproc)
+sudo make install
+（已经打包进了脚本 在文件夹里 运行
+chmod +x build_opencv3.4.11.sh
+./build_opencv3.4.11.sh
+chmod +x build_opencv4.2.0.sh
+./build_opencv4.2.0.sh
+cd ~/catkin_ws/src/vision_opencv
+chmod +x build_cv_bridge_with_opencv3.sh
+./build_cv_bridge_with_opencv3.sh
+）
+然后现在运行build.sh就可以用上3.4.11了 现在打算借助gbd开始debug
+cd ~/Algs/vins && chmod +x build.sh && ./build.sh && source ~/Algs/vins/devel/setup.bash && gdb --args ~/Algs/vins/devel/lib/vins/vins_node ~/Algs/vins/src/VINS-Fusion/config/euroc/euroc_mono_imu_config.yaml
+cd ~/Algs/vins && chmod +x build.sh && ./build.sh && source ~/Algs/vins/devel/setup.bash && gdb --args ~/Algs/vins/devel/lib/vins/vins_node ~/Algs/vins/src/VINS-Fusion/config/oivio/oivio_mono_imu_config.yaml
+
+cd ~/Algs/vins && chmod +x build.sh && ./build.sh && source ~/Algs/vins/devel/setup.bash && rosrun loop_fusion loop_fusion_node ~/Algs/vins/src/VINS-Fusion/config/euroc/euroc_mono_imu_config.yaml
+
+rosbag info ~/Datasets/euroc_data/MH_01_easy.bag
+
+

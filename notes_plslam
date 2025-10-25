@@ -1,0 +1,295 @@
+首先Git并且编译这个plslam包
+# 准备工作区
+mkdir -p ~/Algs/plslam/src
+cd ~/Algs/plslam/src
+
+# 克隆源码
+git clone https://github.com/rubengooj/pl-slam.git
+
+# 回到工作空间编译
+cd ~/Algs/plslam
+catkin config --extend /opt/ros/noetic \
+  --cmake-args -DCMAKE_BUILD_TYPE=Release \
+               -DOpenCV_DIR=/opt/opencv-3.4.11/share/OpenCV
+catkin build
+build是整体的ROS 但是这个好像也是使用的非ROS模式
+所以应该这样编译：
+编译前记得先清理
+cd ~/Algs/pl-slam
+rm -rf 3rdparty/line_descriptor/build
+rm -rf 3rdparty/DBoW2/build
+rm -rf build
+
+chmod +x build.sh
+./build.sh
+source ~/Algs/vins/devel/setup.bash 
+编译前记得先清理
+cd ~/Algs/pl-slam
+rm -rf 3rdparty/line_descriptor/build
+rm -rf 3rdparty/DBoW2/build
+rm -rf build
+
+缺乏G2O和mrpt 且系统级安装失败，所以安装源码版。
+cd ~/Packages
+rm -rf g2o
+git clone https://github.com/RainerKuemmerle/g2o.git
+cd g2o
+git checkout 20160424_git
+mkdir build && cd build
+cmake .. -DCMAKE_BUILD_TYPE=Release
+make -j$(nproc)
+sudo make install
+
+cd /usr/local/lib
+sudo ln -sv libg2o_csparse_extension.so libg2o_ext_csparse.so
+sudo ldconfig
+g2o的有个库名不对 所以把动态库链接一下
+
+cd ~/Packages
+git clone https://github.com/MRPT/mrpt.git
+cd ~/Packages/mrpt
+git submodule update --init --recursive
+rm -rf build && mkdir build && cd build
+cmake .. -DCMAKE_BUILD_TYPE=Release
+make -j8
+sudo make install
+然后这里发现好像连接不上opencv
+您之前遇到的问题主要是因为在 OpenCV 3.4.11 版本中，SIFT（尺度不变特征变换）算法的源文件 sift.cpp 已经从 opencv_contrib/modules/xfeatures2d/src/ 中移除，并被迁移到了 OpenCV 主仓库中。这意味着在该版本中，SIFT 不再作为非自由模块的一部分，而是成为了主库的一部分。
+
+此外，SIFT 的专利已于 2020 年 3 月到期，因此从 OpenCV 3.4.10 和 4.3.0 版本开始，SIFT 被重新纳入主库，并且可以在不启用 OPENCV_ENABLE_NONFREE 选项的情况下使用。
+
+在 OpenCV 3.4.11 及更高版本中，SIFT 已经从 cv2.xfeatures2d.SIFT_create() 迁移到了 cv2.SIFT_create()。因此，您在调用时应使用新的方式。
+cd ~/Packages/opencv-3.4.11/opencv
+rm -rf build && mkdir build && cd build
+
+cmake .. \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_INSTALL_PREFIX=/opt/opencv-3.4.11 \
+  -DOPENCV_ENABLE_NONFREE=ON \
+  -DOPENCV_EXTRA_MODULES_PATH=../../opencv_contrib/modules \
+  -DBUILD_opencv_xfeatures2d=ON \
+  -DBUILD_opencv_legacy=ON \
+  -DBUILD_opencv_imgcodecs=ON \
+  -DBUILD_LIST=core,imgcodecs,highgui,xfeatures2d \
+  -DWITH_IMGCODEC_HDR=ON
+
+make -j$(nproc)
+sudo make install
+
+cd ~/Packages/opencv-3.4.11/opencv
+rm -rf build && mkdir build && cd build
+
+cmake .. \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_INSTALL_PREFIX=/opt/opencv-3.4.11 \
+  -DOPENCV_EXTRA_MODULES_PATH=../../opencv_contrib/modules \
+  -DOPENCV_ENABLE_NONFREE=ON \
+  -DBUILD_opencv_xfeatures2d=ON \
+  -DBUILD_LIST=core,imgproc,imgcodecs,highgui,xfeatures2d \
+  -DBUILD_opencv_features2d=ON \
+  -DWITH_IMGCODEC_HDR=ON
+
+make -j$(nproc)
+sudo make install
+
+直到运行这个PYTHONPATH=/opt/opencv-3.4.11/lib/python3.8/dist-packages python3 -c "import cv2; print(cv2.__version__); print(hasattr(cv2, 'xfeatures2d'))"得到
+3.4.11
+True
+就是opencv重新编译成功了，可以重新回去编译MRPT
+chmod +x ~/Packages/mrpt/build.sh
+~/Packages/mrpt/build.sh
+cd ~/Packages/mrpt/build
+sudo make install
+这个应该是默认装到系统包路径里
+
+cd ~/Algs/plslam
+git clone https://github.com/MRPT/mrpt.git mrpt-pl
+cd mrpt-pl
+git checkout 0c3d605c3cbf5f2ffb8137089e43ebdae5a55de3 -b mrpt-plslam-stable
+
+mkdir build && cd build
+
+cmake .. \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_INSTALL_PREFIX=/usr/local \
+  -DCMAKE_CXX_STANDARD=14 \
+  -DOpenCV_DIR=/opt/opencv-3.4.2/share/OpenCV
+make -j$(nproc)
+sudo make install
+
+cd ~/Algs/plslam/mrpt-pl/build
+rm -rf *  # 清空旧缓存
+cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local -DCMAKE_CXX_STANDARD=14 -DOpenCV_DIR=/opt/opencv-3.4.2/share/OpenCV | tee cmake_log.txt
+
+grep -i error cmake_log.txt
+
+grep -R "opencv" CMakeCache.txt | grep include
+
+rm -f build_log.txt
+make -j$(nproc) 2>&1 | tee build_log.txt
+grep -i "error" build_log.txt
+现在终于装好mrpt-pl了
+cd ~/Algs/plslam
+git clone https://github.com/rubengooj/stvo-pl.git
+cd stvo-pl
+chmod +x build.sh
+rm -f build_log.txt
+./build.sh | tee build_log.txt
+grep -i "error" build_log.txt
+然后这时候也make好了stvo-pl
+~/Algs/plslam/
+├── mrpt-pl/
+├── stvo-pl/
+└── pl-slam/   ← 现在要进入这里构建主程序
+cd ~/Algs/plslam/pl-slam
+chmod +x build.sh
+./build.sh
+
+cp ~/Algs/plslam/pl-slam/config/dataset_params/euroc_params.yaml ~/Datasets/euroc_data/MH_01_easy/mav0/dataset_params.yaml
+
+cd ~/Algs/plslam/stvo-pl/build
+export DATASETS_DIR=~/Datasets/euroc_data
+./imagesStVO MH_01_easy/mav0
+
+gdb ./imagesStVO
+run MH_01_easy/mav0
+bt
+这个函数 updateScene(...) 是 src/sceneRepresentation.cpp 中用于更新 OpenGL 场景的代码。根据你前面查到的经验贴，该函数中的变量 v_aux_, v_auxgt_, v_aux1_ 等存在重复赋值或未初始化的问题，导致在某些条件下崩溃。
+    作者明确提到要手动 patch sceneRepresentation.cpp。
+cd ~/Algs/plslam/stvo-pl/src
+sed -i 's/v_aux_/v_aux/g' sceneRepresentation.cpp
+sed -i 's/v_auxgt_/v_auxgt/g' sceneRepresentation.cpp
+sed -i 's/v_aux1_/v_aux1/g' sceneRepresentation.cpp
+重新编译stvo
+cd ~/Algs/plslam/stvo-pl
+chmod +x build.sh
+rm -f build_log.txt
+./build.sh | tee build_log.txt
+grep -i "error" build_log.txt
+再次运行stvo底下的可执行文件./imagesStVO
+cd ~/Algs/plslam/stvo-pl/build
+export DATASETS_DIR=~/Datasets/euroc_data
+./imagesStVO MH_01_easy/mav0
+这一步应该不会再崩溃，窗口会稳定打开并显示图像流。
+关于复制过去的dataset_params.yaml的内容 原版是这样：
+cam0:
+  Kl: [458.654, 457.296, 367.215, 248.375]
+  Kr: [457.587, 456.134, 379.999, 255.238]
+  Dl: [-0.28340811, 0.07395907, 0.00019359, 1.76187114e-05]
+  Dr: [-0.28368365,  0.07451284, -0.00010473, -3.55590700e-05]
+  Rl: [0.9999663475300330, -0.001422739138722922, 0.008079580483432283, 0.001365741834644127, 0.9999741760894847, 0.007055629199258132, -0.008089410156878961, -0.007044357138835809, 0.9999424675829176]
+  Rr: [0.9999633526194376, -0.003625811871560086, 0.007755443660172947, 0.003680398547259526, 0.9999684752771629, -0.007035845251224894, -0.007729688520722713, 0.007064130529506649, 0.9999451734846440]
+  cam_bl: 0.110077842
+  cam_height: 480
+  cam_model: Pinhole
+  cam_width: 752
+  R: [  9.99997256e-01,   2.31206719e-03,   3.76008102e-04, 
+	-2.31713572e-03,   9.99898049e-01,   1.40898358e-02,
+	-3.43393121e-04,  -1.40906685e-02,   9.99900663e-01 ]
+  t: [ -0.11007381,  0.00039912, -0.0008537 ]
+images_subfolder_l: cam0/data/
+images_subfolder_r: cam1/data/
+但是会报错 GPT写的一开始不报错的 现在也报错 
+cam0_file: "cam0.txt"
+cam1_file: "cam1.txt"
+images_subfolder_l: cam0/data/
+images_subfolder_r: cam1/data/
+
+cam0:
+  Kl: [458.654, 457.296, 367.215, 248.375]
+  Kr: [457.587, 456.134, 379.999, 255.238]
+  Dl: [-0.28340811, 0.07395907, 0.00019359, 1.76187114e-05]
+  Dr: [-0.28368365,  0.07451284, -0.00010473, -3.55590700e-05]
+  Rl: [0.99996634, -0.00142273, 0.00807958, 0.00136574, 0.99997417, 0.00705562, -0.00808941, -0.00704435, 0.99994246]
+  Rr: [0.99996335, -0.00362581, 0.00775544, 0.00368039, 0.99996847, -0.00703584, -0.00772968, 0.00706413, 0.99994517]
+  cam_bl: 0.110077842
+  cam_height: 480
+  cam_model: Pinhole
+  cam_width: 752
+  R: [0.99999725, 0.00231, 0.000376, -0.00231, 0.99989804, 0.01408, -0.000343, -0.0140906, 0.99990066]
+  t: [-0.11007381, 0.00039912, -0.0008537]
+
+接下来要继续跑 SLAM 那就使用：
+cd ~/Algs/plslam/pl-slam
+chmod +x build.sh
+./build.sh
+cd ~/Algs/plslam/pl-slam/build
+export DATASETS_DIR=~/Datasets/euroc_data
+./plslam_dataset MH_01_easy/mav0 \
+  -c ../config/config/config_euroc.yaml \
+  -o 0 -s 2 -n 10000
+  
+cd ~/Algs/plslam/pl-slam/build
+export DATASETS_DIR=~/Datasets/euroc_data
+./plslam_dataset MH_05_difficult/mav0 \
+  -c ../config/config/config_euroc.yaml \
+  -o 0 -s 2 -n 10000  
+  
+export DATASETS_DIR=~/Datasets/euroc_data  
+cd ~/Algs/plslam/pl-slam/build
+gdb ./plslam_dataset
+run MH_01_easy/mav0 \
+  -c ../config/config/config_euroc.yaml \
+  -o 0 -s 1 -n 10000
+
+也可以加上：
+    -o 起始帧偏移
+    -s 跳帧
+    -n 帧数上限
+evo_ape tum \
+   /home/zyy/Datasets/euroc_data/gt_plslam/MH_01_easy/MH_01_easy_gt_tum.txt \
+   /home/zyy/Datasets/euroc_data/gt_plslam/MH_01_easy/trajout.txt \
+  --align --plot --correct_scale --save_results ape_plslam.zip
+APE w.r.t. translation part (m)
+(with Sim(3) Umeyama alignment)
+
+       max	6.358012
+      mean	2.715417
+    median	2.819855
+       min	0.546099
+      rmse	2.972621
+       sse	32147.100302
+       std	1.209540
+cp /home/zyy/Algs/plslam/pl-slam/config/dataset_params/euroc_params.yaml ~/Datasets/euroc_data/MH_05_difficult/mav0/dataset_params.yaml
+MH_05_difficult/
+├── cam0/
+├── cam1/
+├── imu0/
+├── state_groundtruth_estimate0/
+├── cam0.txt
+├── cam1.txt
+├── dataset_params.yaml
+在运行 MH_01_easy 数据集时，轨迹起初正常，但在飞机 静止阶段（hover 或静止） 开始出现 漂移、轨迹乱跳，最终导致整体误差非常大。
+
+cp /home/zyy/Algs/plslam/pl-slam/config/dataset_params/oivio_params.yaml /home/zyy/Datasets/oivio/TN_015_GV_01/dataset_params.yaml
+
+cd ~/Algs/plslam/pl-slam/build
+export DATASETS_DIR=~/Datasets/oivio
+./plslam_dataset TN_015_GV_01 \
+    -c ../config/config/config_oivio.yaml \
+    -n 1000 -s 1 -o 0
+    
+cd ~/Algs/plslam/pl-slam/build
+export DATASETS_DIR=~/Datasets/oivio
+./plslam_dataset TN_015_GV_01 \
+    -c ../config/config/config_oivio.yaml \
+    -n 10000 -s 2 -o 0
+
+cd ~/Algs/plslam/stvo-pl/build
+export DATASETS_DIR=~/Datasets/oivio
+./plslam_dataset TN_015_GV_01 -c ../config/config/config_oivio.yaml -n 5 -s 1 -o 0
+
+cd ~/Algs/plslam/pl-slam/build
+export DATASETS_DIR=~/Datasets/oivio
+gdb ./plslam_dataset
+run TN_015_GV_01 \
+    -c ../config/config/config_oivio.yaml \
+    -n 10000 -s 2 -o 0
+    
+python3 ~/Datasets/plslam_oivio/convert_gt.py --seq TN_015_GV_01
+evo_ape tum \
+   /home/zyy/Datasets/plslam_oivio/TN_015_GV_01/TN_015_GV_01_gt_tum.txt \
+   /home/zyy/Datasets/plslam_oivio/TN_015_GV_01/trajout.txt \
+  --align --plot --correct_scale
+现在是我把remap关掉了 关掉以后可视化就很接近原轨迹的形态 然后也很稳 不过估计是精度不高 但是我现在没有原轨迹 leica0里面的那个很明显不是的 1月份跑的trajectory.csv也很明显不对 所以我现在先跑别的 然后拿那个和这次的结果对比。
+

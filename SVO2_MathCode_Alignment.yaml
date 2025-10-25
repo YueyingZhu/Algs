@@ -1,0 +1,510 @@
+# SVO2 Math↔Code 对齐采集器
+# 基于SVO2源码的数学理论与代码实现映射分析
+
+# =============================================================================
+# 核心数据结构和类型定义
+# =============================================================================
+
+data_structures:
+  # IMU数据结构
+  ImuMeasurement:
+    file: "src/rpg_svo_pro_open/svo/common/include/svo/common/types.h"
+    lines: "约50-80行"
+    signature: "struct ImuMeasurement { double timestamp_; Vector3d acc_; Vector3d omega_; }"
+    fields:
+      - name: "timestamp_"
+        type: "double"
+        purpose: "IMU测量时间戳"
+        in_state_vector: false
+      - name: "acc_"
+        type: "Vector3d"
+        purpose: "加速度计测量值"
+        in_state_vector: false
+      - name: "omega_"
+        type: "Vector3d"
+        purpose: "陀螺仪测量值"
+        in_state_vector: false
+
+  # 相机数据结构
+  CameraData:
+    file: "src/rpg_svo_pro_open/svo/common/include/svo/common/frame.h"
+    lines: "约100-200行"
+    signature: "class Frame { cv::Mat img_pyr_[5]; Transformation T_world_cam_; Features features_; }"
+    fields:
+      - name: "img_pyr_"
+        type: "cv::Mat[5]"
+        purpose: "图像金字塔，用于多尺度处理"
+        in_state_vector: false
+      - name: "T_world_cam_"
+        type: "Transformation"
+        purpose: "相机在世界坐标系中的位姿"
+        in_state_vector: true
+      - name: "features_"
+        type: "Features"
+        purpose: "特征点集合"
+        in_state_vector: false
+
+  # 状态向量结构
+  State:
+    file: "src/rpg_svo_pro_open/svo/include/svo/frame_handler_base.h"
+    lines: "约400-520行"
+    signature: "class FrameHandlerBase { MapPtr map_; FrameBundlePtr new_frames_; FrameBundlePtr last_frames_; }"
+    fields:
+      - name: "map_"
+        type: "MapPtr"
+        purpose: "关键帧地图"
+        in_state_vector: true
+      - name: "new_frames_"
+        type: "FrameBundlePtr"
+        purpose: "当前处理的帧束"
+        in_state_vector: false
+      - name: "last_frames_"
+        type: "FrameBundlePtr"
+        purpose: "上一帧束"
+        in_state_vector: false
+      - name: "T_world_imuinit"
+        type: "Transformation"
+        purpose: "初始IMU位姿"
+        in_state_vector: true
+
+# =============================================================================
+# 核心函数映射
+# =============================================================================
+
+functions:
+  # 主处理流程函数
+  FrameHandlerBase::addFrameBundle:
+    file: "src/rpg_svo_pro_open/svo/src/frame_handler_base.cpp"
+    lines: "200-300"
+    signature: "bool addFrameBundle(const FrameBundlePtr& frame_bundle)"
+    inputs:
+      - name: "frame_bundle"
+        type: "FrameBundlePtr"
+        description: "输入帧束"
+    outputs:
+      - name: "return"
+        type: "bool"
+        description: "处理是否成功"
+    brief: "主处理入口，协调整个SLAM流程"
+    notes: "修改state、调用后端更新、处理IMU数据"
+    calls:
+      - "processFrameBundle() - 派生类实现"
+      - "bundle_adjustment_->loadMapFromBundleAdjustment() - 后端更新"
+      - "imu_handler_->getMeasurements() - IMU数据获取"
+    used_by: "ROS节点、测试程序"
+
+  # 单目处理流程
+  FrameHandlerMono::processFrameBundle:
+    file: "src/rpg_svo_pro_open/svo/src/frame_handler_mono.cpp"
+    lines: "38-54"
+    signature: "UpdateResult processFrameBundle() override"
+    inputs: []
+    outputs:
+      - name: "return"
+        type: "UpdateResult"
+        description: "处理结果状态"
+    brief: "单目SLAM主处理流程"
+    notes: "根据当前状态调用不同处理函数"
+    calls:
+      - "processFrame() - 正常跟踪"
+      - "processFirstFrame() - 初始化"
+      - "relocalizeFrame() - 重定位"
+    used_by: "FrameHandlerBase::addFrameBundle"
+
+  # 稀疏图像对齐
+  FrameHandlerBase::sparseImageAlignment:
+    file: "src/rpg_svo_pro_open/svo/src/frame_handler_base.cpp"
+    lines: "约600-700行"
+    signature: "size_t sparseImageAlignment()"
+    inputs: []
+    outputs:
+      - name: "return"
+        type: "size_t"
+        description: "对齐的特征数量"
+    brief: "稀疏图像对齐，估计初始位姿"
+    notes: "使用光度误差、修改位姿状态"
+    calls:
+      - "sparse_img_align_->run() - 执行对齐"
+      - "getMotionPrior() - 获取运动先验"
+    used_by: "processFrame()"
+
+  # 地图重投影
+  FrameHandlerBase::projectMapInFrame:
+    file: "src/rpg_svo_pro_open/svo/src/frame_handler_base.cpp"
+    lines: "约700-800行"
+    signature: "size_t projectMapInFrame()"
+    inputs: []
+    outputs:
+      - name: "return"
+        type: "size_t"
+        description: "重投影的特征数量"
+    brief: "将地图点重投影到当前帧"
+    notes: "不修改状态，只进行重投影"
+    calls:
+      - "reprojectors_[i]->reprojectFrames() - 重投影"
+      - "map_->getOverlapKeyframes() - 获取重叠关键帧"
+    used_by: "processFrame()"
+
+  # 位姿优化
+  FrameHandlerBase::optimizePose:
+    file: "src/rpg_svo_pro_open/svo/src/frame_handler_base.cpp"
+    lines: "约800-900行"
+    signature: "size_t optimizePose()"
+    inputs: []
+    outputs:
+      - name: "return"
+        type: "size_t"
+        description: "优化后的特征数量"
+    brief: "位姿优化，最小化重投影误差"
+    notes: "修改位姿状态、使用鲁棒估计"
+    calls:
+      - "pose_optimizer_->run() - 执行优化"
+      - "removeOutliers() - 移除外点"
+    used_by: "processFrame()"
+
+  # 结构优化
+  FrameHandlerBase::optimizeStructure:
+    file: "src/rpg_svo_pro_open/svo/src/frame_handler_base.cpp"
+    lines: "约900-1000行"
+    signature: "void optimizeStructure(const FrameBundlePtr& frames, int max_n_pts, int max_iter)"
+    inputs:
+      - name: "frames"
+        type: "FrameBundlePtr"
+        description: "要优化的帧束"
+      - name: "max_n_pts"
+        type: "int"
+        description: "最大优化点数"
+      - name: "max_iter"
+        type: "int"
+        description: "最大迭代次数"
+    outputs: []
+    brief: "3D点结构优化"
+    notes: "修改3D点位置、使用Bundle Adjustment"
+    calls:
+      - "point_optimizer_->run() - 执行点优化"
+    used_by: "processFrame()"
+
+  # IMU数据添加
+  ImuHandler::addImuMeasurement:
+    file: "src/rpg_svo_pro_open/svo/src/imu_handler.cpp"
+    lines: "约100-150行"
+    signature: "bool addImuMeasurement(const ImuMeasurement& measurement)"
+    inputs:
+      - name: "measurement"
+        type: "ImuMeasurement"
+        description: "IMU测量数据"
+    outputs:
+      - name: "return"
+        type: "bool"
+        description: "添加是否成功"
+    brief: "添加IMU测量数据到缓冲区"
+    notes: "不修改状态，只存储数据"
+    calls:
+      - "measurements_.push_front() - 添加到缓冲区"
+    used_by: "ROS IMU回调函数"
+
+  # IMU预积分
+  PreintegratedImuMeasurement::addMeasurement:
+    file: "src/rpg_svo_pro_open/svo/include/svo/imu_handler.h"
+    lines: "38-42"
+    signature: "void addMeasurement(const ImuMeasurement& m)"
+    inputs:
+      - name: "m"
+        type: "ImuMeasurement"
+        description: "单个IMU测量"
+    outputs: []
+    brief: "IMU预积分计算"
+    notes: "计算预积分量、更新协方差"
+    calls:
+      - "integrateGyroMeasurement() - 陀螺仪积分"
+    used_by: "IMU处理流程"
+
+  # 位姿优化器核心
+  PoseOptimizer::run:
+    file: "src/rpg_svo_pro_open/svo/src/pose_optimizer.cpp"
+    lines: "约50-100行"
+    signature: "size_t run(const FrameBundle::Ptr& frame, double reproj_thresh)"
+    inputs:
+      - name: "frame"
+        type: "FrameBundle::Ptr"
+        description: "要优化的帧束"
+      - name: "reproj_thresh"
+        type: "double"
+        description: "重投影误差阈值"
+    outputs:
+      - name: "return"
+        type: "size_t"
+        description: "优化后的特征数量"
+    brief: "位姿优化核心函数"
+    notes: "使用高斯-牛顿法、修改位姿状态"
+    calls:
+      - "evaluateError() - 计算误差"
+      - "update() - 更新状态"
+    used_by: "FrameHandlerBase::optimizePose"
+
+  # 重投影器核心
+  Reprojector::reprojectFrames:
+    file: "src/rpg_svo_pro_open/svo/src/reprojector.cpp"
+    lines: "约100-200行"
+    signature: "void reprojectFrames(const FramePtr& frame, const std::vector<FramePtr>& close_kfs, std::vector<PointPtr>& trash_points)"
+    inputs:
+      - name: "frame"
+        type: "FramePtr"
+        description: "当前帧"
+      - name: "close_kfs"
+        type: "std::vector<FramePtr>"
+        description: "邻近关键帧"
+      - name: "trash_points"
+        type: "std::vector<PointPtr>&"
+        description: "待删除点"
+    outputs: []
+    brief: "重投影地图点到当前帧"
+    notes: "不修改状态，只进行重投影"
+    calls:
+      - "matchCandidates() - 匹配候选点"
+      - "projectPointAndCheckVisibility() - 投影和可见性检查"
+    used_by: "FrameHandlerBase::projectMapInFrame"
+
+  # 深度滤波器
+  DepthFilter::updateSeeds:
+    file: "src/rpg_svo_pro_open/svo_direct/src/depth_filter.cpp"
+    lines: "约200-300行"
+    signature: "void updateSeeds(const FramePtr& frame)"
+    inputs:
+      - name: "frame"
+        type: "FramePtr"
+        description: "当前帧"
+    outputs: []
+    brief: "更新深度种子"
+    notes: "修改深度估计、使用贝叶斯更新"
+    calls:
+      - "updateSeed() - 更新单个种子"
+      - "convergeSeed() - 收敛种子"
+    used_by: "processFrame()"
+
+  # 初始化器
+  AbstractInitialization::addFrameBundle:
+    file: "src/rpg_svo_pro_open/svo/src/initialization.cpp"
+    lines: "约100-200行"
+    signature: "virtual InitResult addFrameBundle(const FrameBundlePtr& frames_cur) = 0"
+    inputs:
+      - name: "frames_cur"
+        type: "FrameBundlePtr"
+        description: "当前帧束"
+    outputs:
+      - name: "return"
+        type: "InitResult"
+        description: "初始化结果"
+    brief: "SLAM系统初始化"
+    notes: "修改地图状态、创建初始关键帧"
+    calls:
+      - "trackFeaturesAndCheckDisparity() - 特征跟踪"
+      - "triangulateAndInitializePoints() - 三角化"
+    used_by: "FrameHandlerMono::processFirstFrame"
+
+  # 束调整接口
+  AbstractBundleAdjustment::bundleAdjustment:
+    file: "src/rpg_svo_pro_open/svo_ceres_backend/src/ceres_backend.cpp"
+    lines: "约100-200行"
+    signature: "virtual void bundleAdjustment(const FrameBundlePtr& frame_bundle) = 0"
+    inputs:
+      - name: "frame_bundle"
+        type: "FrameBundlePtr"
+        description: "要优化的帧束"
+    outputs: []
+    brief: "束调整优化"
+    notes: "修改位姿和结构、使用Ceres或GTSAM"
+    calls:
+      - "ceres::Solve() - Ceres求解器"
+      - "gtsam::optimize() - GTSAM求解器"
+    used_by: "后端线程"
+
+# =============================================================================
+# 数学原理与代码映射
+# =============================================================================
+
+mathematical_mappings:
+  # 稀疏图像对齐数学原理
+  sparse_image_alignment:
+    mathematical_formulation: |
+      T* = argmin Σ ρ(||I_2(π(T * p_i)) - I_1(π(p_i))||²)
+      其中: π是投影函数, T是相对位姿, ρ是鲁棒函数
+    code_implementation: "SparseImgAlign::run()"
+    key_functions:
+      - "calculateResidual() - 计算光度残差"
+      - "calculateJacobian() - 计算雅可比矩阵"
+      - "updateState() - 更新位姿状态"
+    mathematical_components:
+      - "光度误差: ||I_2(π(T * p_i)) - I_1(π(p_i))||²"
+      - "雅可比矩阵: ∂e/∂T"
+      - "高斯-牛顿更新: T = T + ΔT"
+
+  # 位姿优化数学原理
+  pose_optimization:
+    mathematical_formulation: |
+      T* = argmin Σ ρ(||π(P_i, T) - z_i||²_Σ_i)
+      其中: P_i是3D点, z_i是观测, Σ_i是协方差
+    code_implementation: "PoseOptimizer::run()"
+    key_functions:
+      - "evaluateError() - 计算重投影误差"
+      - "calculateFeatureResidual() - 计算特征残差"
+      - "removeOutliers() - 移除外点"
+    mathematical_components:
+      - "重投影误差: ||π(P_i, T) - z_i||²"
+      - "鲁棒函数: ρ(·)"
+      - "协方差加权: Σ_i"
+
+  # IMU预积分数学原理
+  imu_preintegration:
+    mathematical_formulation: |
+      α_ij = ∫∫[t_i,t_j] R(τ) a^b(τ) dτ²
+      β_ij = ∫[t_i,t_j] R(τ) a^b(τ) dτ
+      γ_ij = ∫[t_i,t_j] R(τ) dτ
+    code_implementation: "PreintegratedImuMeasurement::addMeasurement()"
+    key_functions:
+      - "integrateGyroMeasurement() - 陀螺仪积分"
+      - "integrateAccMeasurement() - 加速度积分"
+    mathematical_components:
+      - "旋转积分: γ_ij"
+      - "速度积分: β_ij"
+      - "位置积分: α_ij"
+
+  # 深度滤波数学原理
+  depth_filtering:
+    mathematical_formulation: |
+      p(d|z) ∝ p(z|d) * p(d)
+      其中: d是深度, z是观测
+    code_implementation: "DepthFilter::updateSeeds()"
+    key_functions:
+      - "updateSeed() - 更新深度种子"
+      - "convergeSeed() - 收敛种子"
+    mathematical_components:
+      - "贝叶斯更新: p(d|z) ∝ p(z|d) * p(d)"
+      - "深度先验: p(d)"
+      - "观测似然: p(z|d)"
+
+# =============================================================================
+# 关键类和结构体
+# =============================================================================
+
+key_classes:
+  # 特征跟踪器
+  FeatureTracker:
+    file: "src/rpg_svo_pro_open/svo_tracker/include/svo/tracker/feature_tracker.h"
+    lines: "约50-100行"
+    signature: "class FeatureTracker"
+    purpose: "特征点跟踪和匹配"
+    key_methods:
+      - "trackFeatures() - 跟踪特征点"
+      - "matchFeatures() - 匹配特征点"
+    mathematical_basis: "Lucas-Kanade光流算法"
+
+  # 特征检测器
+  AbstractDetector:
+    file: "src/rpg_svo_pro_open/svo_direct/include/svo/direct/feature_detection.h"
+    lines: "约100-150行"
+    signature: "class AbstractDetector"
+    purpose: "特征点检测"
+    key_methods:
+      - "detectFeatures() - 检测特征点"
+      - "setGridOccupied() - 设置网格占用"
+    mathematical_basis: "FAST角点检测算法"
+
+  # 匹配器
+  Matcher:
+    file: "src/rpg_svo_pro_open/svo_direct/include/svo/direct/matcher.h"
+    lines: "约50-100行"
+    signature: "class Matcher"
+    purpose: "特征匹配"
+    key_methods:
+      - "matchFeature() - 匹配单个特征"
+      - "matchFeatures() - 批量匹配"
+    mathematical_basis: "模板匹配和亚像素精度"
+
+# =============================================================================
+# 数学符号说明
+# =============================================================================
+
+mathematical_notation:
+  variables:
+    T: "位姿变换矩阵 (4x4)"
+    R: "旋转矩阵 (3x3)"
+    t: "平移向量 (3x1)"
+    P: "3D点坐标 (3x1)"
+    z: "2D观测 (2x1)"
+    π: "投影函数"
+    ρ: "鲁棒函数"
+    Σ: "协方差矩阵"
+    H: "海塞矩阵"
+    J: "雅可比矩阵"
+    e: "误差向量"
+    λ: "拉格朗日乘子"
+    α, β, γ: "IMU预积分量"
+    ω: "角速度"
+    a: "加速度"
+    d: "深度"
+    I: "图像强度"
+
+  operators:
+    "||·||²": "L2范数平方"
+    "argmin": "最小化参数"
+    "∫": "积分"
+    "∂": "偏导数"
+    "∝": "正比于"
+    "∈": "属于"
+    "∀": "对于所有"
+    "∃": "存在"
+
+# =============================================================================
+# 算法流程总结
+# =============================================================================
+
+algorithm_flow:
+  initialization:
+    - "特征检测和跟踪"
+    - "相对位姿估计"
+    - "三角化初始地图"
+    - "设置初始关键帧"
+
+  tracking:
+    - "稀疏图像对齐 (初始位姿估计)"
+    - "地图重投影 (特征匹配)"
+    - "位姿优化 (重投影误差最小化)"
+    - "结构优化 (3D点位置优化)"
+    - "深度滤波更新"
+    - "关键帧选择"
+
+  backend:
+    - "束调整优化"
+    - "回环检测"
+    - "全局地图优化"
+
+  imu_integration:
+    - "IMU数据预处理"
+    - "预积分计算"
+    - "视觉-惯性融合"
+    - "偏置估计"
+
+# =============================================================================
+# 性能优化要点
+# =============================================================================
+
+performance_optimizations:
+  computational_efficiency:
+    - "稀疏图像对齐只使用部分特征点"
+    - "多尺度金字塔处理"
+    - "并行特征检测和匹配"
+    - "增量式束调整"
+
+  memory_management:
+    - "关键帧数量限制"
+    - "地图点垃圾回收"
+    - "特征点池管理"
+    - "图像金字塔缓存"
+
+  numerical_stability:
+    - "鲁棒估计函数"
+    - "外点检测和移除"
+    - "数值积分稳定性"
+    - "协方差矩阵正则化"
+

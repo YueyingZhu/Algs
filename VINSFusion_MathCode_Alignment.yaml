@@ -1,0 +1,632 @@
+# VINS-Fusion Math↔Code 对齐采集器
+# 基于VINS-Fusion源码的数学理论与代码实现映射分析
+
+# =============================================================================
+# 核心数据结构和类型定义
+# =============================================================================
+
+data_structures:
+  # IMU数据结构
+  ImuData:
+    file: "src/VINS-Fusion/vins_estimator/src/estimator/estimator.h"
+    lines: "98-100"
+    signature: "queue<pair<double, Eigen::Vector3d>> accBuf; queue<pair<double, Eigen::Vector3d>> gyrBuf;"
+    fields:
+      - name: "accBuf"
+        type: "queue<pair<double, Eigen::Vector3d>>"
+        purpose: "加速度计数据缓冲区"
+        in_state_vector: false
+      - name: "gyrBuf"
+        type: "queue<pair<double, Eigen::Vector3d>>"
+        purpose: "陀螺仪数据缓冲区"
+        in_state_vector: false
+
+  # 相机数据结构
+  CameraData:
+    file: "src/VINS-Fusion/vins_estimator/src/estimator/estimator.h"
+    lines: "100"
+    signature: "queue<pair<double, map<int, vector<pair<int, Eigen::Matrix<double, 7, 1> > > > > > featureBuf;"
+    fields:
+      - name: "featureBuf"
+        type: "queue<pair<double, map<int, vector<pair<int, Eigen::Matrix<double, 7, 1> > > > > >"
+        purpose: "特征点数据缓冲区"
+        in_state_vector: false
+
+  # 状态向量结构
+  State:
+    file: "src/VINS-Fusion/vins_estimator/src/estimator/estimator.h"
+    lines: "116-121"
+    signature: "Vector3d Ps[(WINDOW_SIZE + 1)]; Vector3d Vs[(WINDOW_SIZE + 1)]; Matrix3d Rs[(WINDOW_SIZE + 1)]; Vector3d Bas[(WINDOW_SIZE + 1)]; Vector3d Bgs[(WINDOW_SIZE + 1)];"
+    fields:
+      - name: "Ps"
+        type: "Vector3d[(WINDOW_SIZE + 1)]"
+        purpose: "位置状态向量"
+        in_state_vector: true
+      - name: "Vs"
+        type: "Vector3d[(WINDOW_SIZE + 1)]"
+        purpose: "速度状态向量"
+        in_state_vector: true
+      - name: "Rs"
+        type: "Matrix3d[(WINDOW_SIZE + 1)]"
+        purpose: "旋转状态向量"
+        in_state_vector: true
+      - name: "Bas"
+        type: "Vector3d[(WINDOW_SIZE + 1)]"
+        purpose: "加速度偏置状态向量"
+        in_state_vector: true
+      - name: "Bgs"
+        type: "Vector3d[(WINDOW_SIZE + 1)]"
+        purpose: "陀螺仪偏置状态向量"
+        in_state_vector: true
+      - name: "ric"
+        type: "Matrix3d[2]"
+        purpose: "相机到IMU的旋转外参"
+        in_state_vector: true
+      - name: "tic"
+        type: "Vector3d[2]"
+        purpose: "相机到IMU的平移外参"
+        in_state_vector: true
+      - name: "td"
+        type: "double"
+        purpose: "时间延迟参数"
+        in_state_vector: true
+
+# =============================================================================
+# 核心函数映射
+# =============================================================================
+
+functions:
+  # 主处理流程函数
+  Estimator::inputIMU:
+    file: "src/VINS-Fusion/vins_estimator/src/estimator/estimator.cpp"
+    lines: "约200-250行"
+    signature: "void inputIMU(double t, const Vector3d &linearAcceleration, const Vector3d &angularVelocity)"
+    inputs:
+      - name: "t"
+        type: "double"
+        description: "时间戳"
+      - name: "linearAcceleration"
+        type: "Vector3d"
+        description: "线性加速度"
+      - name: "angularVelocity"
+        type: "Vector3d"
+        description: "角速度"
+    outputs: []
+    brief: "输入IMU数据到缓冲区"
+    notes: "不修改state，只存储数据到缓冲区"
+    calls:
+      - "accBuf.push() - 添加加速度数据"
+      - "gyrBuf.push() - 添加陀螺仪数据"
+    used_by: "ROS IMU回调函数"
+
+  # 相机数据输入
+  Estimator::inputImage:
+    file: "src/VINS-Fusion/vins_estimator/src/estimator/estimator.cpp"
+    lines: "约300-350行"
+    signature: "void inputImage(double t, const cv::Mat &_img, const cv::Mat &_img1 = cv::Mat())"
+    inputs:
+      - name: "t"
+        type: "double"
+        description: "时间戳"
+      - name: "_img"
+        type: "cv::Mat"
+        description: "左相机图像"
+      - name: "_img1"
+        type: "cv::Mat"
+        description: "右相机图像(可选)"
+    outputs: []
+    brief: "输入图像数据并提取特征"
+    notes: "不修改state，调用特征跟踪器"
+    calls:
+      - "featureTracker.trackImage() - 特征跟踪"
+      - "featureBuf.push() - 添加特征数据"
+    used_by: "ROS图像回调函数"
+
+  # 特征数据输入
+  Estimator::inputFeature:
+    file: "src/VINS-Fusion/vins_estimator/src/estimator/estimator.cpp"
+    lines: "约250-300行"
+    signature: "void inputFeature(double t, const map<int, vector<pair<int, Eigen::Matrix<double, 7, 1>>>> &featureFrame)"
+    inputs:
+      - name: "t"
+        type: "double"
+        description: "时间戳"
+      - name: "featureFrame"
+        type: "map<int, vector<pair<int, Eigen::Matrix<double, 7, 1>>>>"
+        description: "特征帧数据"
+    outputs: []
+    brief: "输入特征数据到缓冲区"
+    notes: "不修改state，只存储数据"
+    calls:
+      - "featureBuf.push() - 添加特征数据"
+    used_by: "inputImage()"
+
+  # 主处理流程
+  Estimator::processMeasurements:
+    file: "src/VINS-Fusion/vins_estimator/src/estimator/estimator.cpp"
+    lines: "约400-500行"
+    signature: "void processMeasurements()"
+    inputs: []
+    outputs: []
+    brief: "主处理流程，协调IMU和视觉数据"
+    notes: "修改state、调用优化、处理滑动窗口"
+    calls:
+      - "processIMU() - 处理IMU数据"
+      - "processImage() - 处理图像数据"
+      - "optimization() - 优化"
+    used_by: "主处理线程"
+
+  # IMU处理
+  Estimator::processIMU:
+    file: "src/VINS-Fusion/vins_estimator/src/estimator/estimator.cpp"
+    lines: "约500-600行"
+    signature: "void processIMU(double t, double dt, const Vector3d &linear_acceleration, const Vector3d &angular_velocity)"
+    inputs:
+      - name: "t"
+        type: "double"
+        description: "时间戳"
+      - name: "dt"
+        type: "double"
+        description: "时间间隔"
+      - name: "linear_acceleration"
+        type: "Vector3d"
+        description: "线性加速度"
+      - name: "angular_velocity"
+        type: "Vector3d"
+        description: "角速度"
+    outputs: []
+    brief: "处理IMU数据，更新状态"
+    notes: "修改state、更新预积分"
+    calls:
+      - "pre_integrations[i]->push_back() - 预积分"
+      - "Rs[i] = Rs[i] * delta_q - 更新旋转"
+    used_by: "processMeasurements()"
+
+  # 图像处理
+  Estimator::processImage:
+    file: "src/VINS-Fusion/vins_estimator/src/estimator/estimator.cpp"
+    lines: "约600-800行"
+    signature: "void processImage(const map<int, vector<pair<int, Eigen::Matrix<double, 7, 1>>>> &image, const double header)"
+    inputs:
+      - name: "image"
+        type: "map<int, vector<pair<int, Eigen::Matrix<double, 7, 1>>>>"
+        description: "特征图像数据"
+      - name: "header"
+        type: "double"
+        description: "时间戳"
+    outputs: []
+    brief: "处理图像数据，更新特征和状态"
+    notes: "修改state、更新特征管理器"
+    calls:
+      - "f_manager.addFeatureCheckParallax() - 添加特征"
+      - "initialStructure() - 初始化结构"
+      - "visualInitialAlign() - 视觉惯性对齐"
+    used_by: "processMeasurements()"
+
+  # 滑动窗口
+  Estimator::slideWindow:
+    file: "src/VINS-Fusion/vins_estimator/src/estimator/estimator.cpp"
+    lines: "约1000-1100行"
+    signature: "void slideWindow()"
+    inputs: []
+    outputs: []
+    brief: "滑动窗口管理"
+    notes: "修改state、边缘化旧状态"
+    calls:
+      - "slideWindowNew() - 滑动新窗口"
+      - "slideWindowOld() - 滑动旧窗口"
+      - "marginalization_flag - 边缘化标志"
+    used_by: "processImage()"
+
+  # 优化
+  Estimator::optimization:
+    file: "src/VINS-Fusion/vins_estimator/src/estimator/estimator.cpp"
+    lines: "约1200-1400行"
+    signature: "void optimization()"
+    inputs: []
+    outputs: []
+    brief: "滑动窗口优化"
+    notes: "修改state、使用Ceres优化"
+    calls:
+      - "vector2double() - 向量转double"
+      - "ceres::Solve() - Ceres求解器"
+      - "double2vector() - double转向量"
+    used_by: "processImage()"
+
+  # 初始化结构
+  Estimator::initialStructure:
+    file: "src/VINS-Fusion/vins_estimator/src/estimator/estimator.cpp"
+    lines: "约800-900行"
+    signature: "bool initialStructure()"
+    inputs: []
+    outputs:
+      - name: "return"
+        type: "bool"
+        description: "初始化是否成功"
+    brief: "初始化3D结构"
+    notes: "修改state、三角化特征点"
+    calls:
+      - "relativePose() - 相对位姿估计"
+      - "sfm.triangulate() - 三角化"
+    used_by: "processImage()"
+
+  # 视觉惯性对齐
+  Estimator::visualInitialAlign:
+    file: "src/VINS-Fusion/vins_estimator/src/estimator/estimator.cpp"
+    lines: "约900-1000行"
+    signature: "bool visualInitialAlign()"
+    inputs: []
+    outputs:
+      - name: "return"
+        type: "bool"
+        description: "对齐是否成功"
+    brief: "视觉惯性对齐"
+    notes: "修改state、估计重力方向和尺度"
+    calls:
+      - "solveGyroscopeBias() - 求解陀螺仪偏置"
+      - "VisualIMUAlignment() - 视觉惯性对齐"
+    used_by: "processImage()"
+
+  # 特征管理器
+  FeatureManager::addFeatureCheckParallax:
+    file: "src/VINS-Fusion/vins_estimator/src/estimator/feature_manager.cpp"
+    lines: "约100-200行"
+    signature: "bool addFeatureCheckParallax(int frame_count, const map<int, vector<pair<int, Eigen::Matrix<double, 7, 1>>>> &image, double td)"
+    inputs:
+      - name: "frame_count"
+        type: "int"
+        description: "帧计数"
+      - name: "image"
+        type: "map<int, vector<pair<int, Eigen::Matrix<double, 7, 1>>>>"
+        description: "特征图像"
+      - name: "td"
+        type: "double"
+        description: "时间延迟"
+    outputs:
+      - name: "return"
+        type: "bool"
+        description: "是否添加特征"
+    brief: "添加特征并检查视差"
+    notes: "不修改state，只管理特征"
+    calls:
+      - "compensatedParallax2() - 计算视差"
+    used_by: "Estimator::processImage"
+
+  # 特征跟踪器
+  FeatureTracker::trackImage:
+    file: "src/VINS-Fusion/vins_estimator/src/featureTracker/feature_tracker.cpp"
+    lines: "约100-300行"
+    signature: "map<int, vector<pair<int, Eigen::Matrix<double, 7, 1>>>> trackImage(double _cur_time, const cv::Mat &_img, const cv::Mat &_img1 = cv::Mat())"
+    inputs:
+      - name: "_cur_time"
+        type: "double"
+        description: "当前时间"
+      - name: "_img"
+        type: "cv::Mat"
+        description: "左相机图像"
+      - name: "_img1"
+        type: "cv::Mat"
+        description: "右相机图像"
+    outputs:
+      - name: "return"
+        type: "map<int, vector<pair<int, Eigen::Matrix<double, 7, 1>>>>"
+        description: "跟踪的特征"
+    brief: "特征跟踪主函数"
+    notes: "不修改state，只进行特征跟踪"
+    calls:
+      - "cv::calcOpticalFlowPyrLK() - 光流跟踪"
+      - "rejectWithF() - 基础矩阵外点剔除"
+    used_by: "Estimator::inputImage"
+
+  # IMU因子
+  IMUFactor::Evaluate:
+    file: "src/VINS-Fusion/vins_estimator/src/factor/imu_factor.h"
+    lines: "28-188"
+    signature: "virtual bool Evaluate(double const *const *parameters, double *residuals, double **jacobians) const"
+    inputs:
+      - name: "parameters"
+        type: "double const *const *"
+        description: "参数数组"
+      - name: "residuals"
+        type: "double *"
+        description: "残差输出"
+      - name: "jacobians"
+        type: "double **"
+        description: "雅可比矩阵输出"
+    outputs:
+      - name: "return"
+        type: "bool"
+        description: "计算是否成功"
+    brief: "IMU因子计算"
+    notes: "不修改state，计算IMU残差和雅可比"
+    calls:
+      - "pre_integration->evaluate() - 预积分评估"
+      - "sqrt_info * residual - 信息矩阵加权"
+    used_by: "Ceres优化器"
+
+  # 边缘化因子
+  MarginalizationFactor::Evaluate:
+    file: "src/VINS-Fusion/vins_estimator/src/factor/marginalization_factor.cpp"
+    lines: "约50-100行"
+    signature: "virtual bool Evaluate(double const *const *parameters, double *residuals, double **jacobians) const"
+    inputs:
+      - name: "parameters"
+        type: "double const *const *"
+        description: "参数数组"
+      - name: "residuals"
+        type: "double *"
+        description: "残差输出"
+      - name: "jacobians"
+        type: "double **"
+        description: "雅可比矩阵输出"
+    outputs:
+      - name: "return"
+        type: "bool"
+        description: "计算是否成功"
+    brief: "边缘化因子计算"
+    notes: "不修改state，计算边缘化残差"
+    calls:
+      - "marginalization_info->linearized_residuals - 线性化残差"
+    used_by: "Ceres优化器"
+
+  # 预积分
+  IntegrationBase::propagate:
+    file: "src/VINS-Fusion/vins_estimator/src/factor/integration_base.h"
+    lines: "139-167"
+    signature: "void propagate(double _dt, const Eigen::Vector3d &_acc_1, const Eigen::Vector3d &_gyr_1)"
+    inputs:
+      - name: "_dt"
+        type: "double"
+        description: "时间间隔"
+      - name: "_acc_1"
+        type: "Eigen::Vector3d"
+        description: "加速度"
+      - name: "_gyr_1"
+        type: "Eigen::Vector3d"
+        description: "角速度"
+    outputs: []
+    brief: "IMU预积分传播"
+    notes: "不修改state，更新预积分量"
+    calls:
+      - "midPointIntegration() - 中点积分"
+    used_by: "Estimator::processIMU"
+
+  # 发布里程计
+  publish_odometry:
+    file: "src/VINS-Fusion/vins_estimator/src/rosNodeTest.cpp"
+    lines: "约200-300行"
+    signature: "void publish_odometry(const Estimator &estimator, const std_msgs::Header &header)"
+    inputs:
+      - name: "estimator"
+        type: "const Estimator &"
+        description: "估计器"
+      - name: "header"
+        type: "const std_msgs::Header &"
+        description: "消息头"
+    outputs: []
+    brief: "发布里程计信息"
+    notes: "不修改state，只发布数据"
+    calls:
+      - "pub_odometry.publish() - 发布里程计"
+      - "pub_path.publish() - 发布路径"
+    used_by: "主处理线程"
+
+# =============================================================================
+# 关键类和结构体
+# =============================================================================
+
+key_classes:
+  # 特征管理器
+  FeatureManager:
+    file: "src/VINS-Fusion/vins_estimator/src/estimator/feature_manager.h"
+    lines: "80-115"
+    signature: "class FeatureManager"
+    purpose: "特征点管理"
+    key_methods:
+      - "addFeatureCheckParallax() - 添加特征"
+      - "triangulate() - 三角化"
+      - "removeBack() - 移除后端特征"
+    mathematical_basis: "特征点三角化和视差计算"
+
+  # 特征跟踪器
+  FeatureTracker:
+    file: "src/VINS-Fusion/vins_estimator/src/featureTracker/feature_tracker.h"
+    lines: "36-85"
+    signature: "class FeatureTracker"
+    purpose: "特征点跟踪"
+    key_methods:
+      - "trackImage() - 跟踪图像"
+      - "rejectWithF() - 基础矩阵外点剔除"
+      - "undistortedPoints() - 去畸变"
+    mathematical_basis: "Lucas-Kanade光流算法"
+
+  # IMU因子
+  IMUFactor:
+    file: "src/VINS-Fusion/vins_estimator/src/factor/imu_factor.h"
+    lines: "21-197"
+    signature: "class IMUFactor : public ceres::SizedCostFunction<15, 7, 9, 7, 9>"
+    purpose: "IMU预积分因子"
+    key_methods:
+      - "Evaluate() - 计算残差和雅可比"
+    mathematical_basis: "IMU预积分理论"
+
+  # 边缘化因子
+  MarginalizationFactor:
+    file: "src/VINS-Fusion/vins_estimator/src/factor/marginalization_factor.h"
+    lines: "85-92"
+    signature: "class MarginalizationFactor : public ceres::CostFunction"
+    purpose: "边缘化因子"
+    key_methods:
+      - "Evaluate() - 计算边缘化残差"
+    mathematical_basis: "Schur补分解"
+
+  # 预积分基类
+  IntegrationBase:
+    file: "src/VINS-Fusion/vins_estimator/src/factor/integration_base.h"
+    lines: "18-218"
+    signature: "class IntegrationBase"
+    purpose: "IMU预积分基类"
+    key_methods:
+      - "propagate() - 传播"
+      - "midPointIntegration() - 中点积分"
+      - "evaluate() - 评估"
+    mathematical_basis: "IMU预积分理论"
+
+# =============================================================================
+# 数学原理与代码映射
+# =============================================================================
+
+mathematical_mappings:
+  # 滑动窗口优化数学原理
+  sliding_window_optimization:
+    mathematical_formulation: |
+      X* = argmin Σ ||r_imu(X)||²_Σ_imu + Σ ||r_visual(X)||²_Σ_visual + ||r_marg(X)||²_Σ_marg
+      其中: X是状态向量, r是残差, Σ是协方差
+    code_implementation: "Estimator::optimization()"
+    key_functions:
+      - "vector2double() - 状态向量转换"
+      - "ceres::Solve() - Ceres求解器"
+      - "double2vector() - 结果转换"
+    mathematical_components:
+      - "状态向量: X = [P, V, R, Ba, Bg, ric, tic, td]"
+      - "IMU残差: r_imu = [δp, δv, δq, δba, δbg]"
+      - "视觉残差: r_visual = [u - π(P)]"
+      - "边缘化残差: r_marg = H_marg * X"
+
+  # IMU预积分数学原理
+  imu_preintegration:
+    mathematical_formulation: |
+      α_ij = ∫∫[t_i,t_j] R(τ) a^b(τ) dτ²
+      β_ij = ∫[t_i,t_j] R(τ) a^b(τ) dτ
+      γ_ij = ∫[t_i,t_j] R(τ) dτ
+    code_implementation: "IntegrationBase::midPointIntegration()"
+    key_functions:
+      - "midPointIntegration() - 中点积分"
+      - "propagate() - 传播"
+      - "evaluate() - 评估"
+    mathematical_components:
+      - "位置积分: α_ij"
+      - "速度积分: β_ij"
+      - "旋转积分: γ_ij"
+      - "协方差传播: P = F*P*F^T + V*Q*V^T"
+
+  # 边缘化数学原理
+  marginalization:
+    mathematical_formulation: |
+      H_marg = H_αα - H_αβ * H_ββ^(-1) * H_βα
+      b_marg = b_α - H_αβ * H_ββ^(-1) * b_β
+    code_implementation: "MarginalizationFactor::Evaluate()"
+    key_functions:
+      - "marginalize() - 边缘化"
+      - "preMarginalize() - 预边缘化"
+    mathematical_components:
+      - "Schur补: H_marg"
+      - "边缘化残差: b_marg"
+      - "信息矩阵: Λ = H^T * Σ^(-1) * H"
+
+  # 视觉惯性对齐数学原理
+  visual_inertial_alignment:
+    mathematical_formulation: |
+      min Σ ||r_visual(X)||² + ||r_imu(X)||²
+      其中: X = [g, v, s, ba, bg]
+    code_implementation: "Estimator::visualInitialAlign()"
+    key_functions:
+      - "solveGyroscopeBias() - 求解陀螺仪偏置"
+      - "VisualIMUAlignment() - 视觉惯性对齐"
+    mathematical_components:
+      - "重力方向: g"
+      - "速度: v"
+      - "尺度: s"
+      - "偏置: ba, bg"
+
+# =============================================================================
+# 数学符号说明
+# =============================================================================
+
+mathematical_notation:
+  variables:
+    P: "位置向量 (3x1)"
+    V: "速度向量 (3x1)"
+    R: "旋转矩阵 (3x3)"
+    Q: "四元数 (4x1)"
+    Ba: "加速度偏置 (3x1)"
+    Bg: "陀螺仪偏置 (3x1)"
+    ric: "相机到IMU旋转 (3x3)"
+    tic: "相机到IMU平移 (3x1)"
+    td: "时间延迟 (1x1)"
+    g: "重力向量 (3x1)"
+    s: "尺度因子 (1x1)"
+    α: "位置预积分量 (3x1)"
+    β: "速度预积分量 (3x1)"
+    γ: "旋转预积分量 (4x1)"
+    H: "海塞矩阵"
+    F: "状态转移矩阵"
+    V: "噪声传播矩阵"
+    Q: "过程噪声协方差"
+    Σ: "测量噪声协方差"
+
+  operators:
+    "||·||²": "L2范数平方"
+    "argmin": "最小化参数"
+    "∫": "积分"
+    "∂": "偏导数"
+    "∝": "正比于"
+    "∈": "属于"
+    "∀": "对于所有"
+    "∃": "存在"
+
+# =============================================================================
+# 算法流程总结
+# =============================================================================
+
+algorithm_flow:
+  initialization:
+    - "特征检测和跟踪"
+    - "IMU数据预处理"
+    - "初始结构估计"
+    - "视觉惯性对齐"
+    - "尺度估计"
+
+  tracking:
+    - "IMU数据预积分"
+    - "特征点跟踪"
+    - "滑动窗口管理"
+    - "状态优化"
+    - "边缘化处理"
+
+  optimization:
+    - "状态向量转换"
+    - "残差计算"
+    - "雅可比计算"
+    - "Ceres优化"
+    - "结果转换"
+
+  marginalization:
+    - "边缘化标志选择"
+    - "Schur补分解"
+    - "边缘化因子构建"
+    - "信息矩阵更新"
+
+# =============================================================================
+# 性能优化要点
+# =============================================================================
+
+performance_optimizations:
+  computational_efficiency:
+    - "滑动窗口限制状态数量"
+    - "预积分减少计算复杂度"
+    - "边缘化保持信息"
+    - "并行特征跟踪"
+
+  memory_management:
+    - "滑动窗口管理内存"
+    - "特征点数量限制"
+    - "缓冲区大小控制"
+    - "边缘化信息存储"
+
+  numerical_stability:
+    - "中点积分方法"
+    - "四元数归一化"
+    - "协方差矩阵正则化"
+    - "外点检测和剔除"
+

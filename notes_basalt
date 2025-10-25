@@ -1,0 +1,390 @@
+| 文件名                    | 说明                                          | 所属流程     |
+| ---------------------- | ------------------------------------------- | -------- |
+| **README.md**          | 项目简介与基本编译运行方式                               | 全局引导     |
+| **calibration.md**     | 如何标定相机 + IMU，生成符合 `calibration.json` 的配置文件  | 输入数据准备   |
+| **dataset\_format.md** | 数据集结构要求（如图像命名、IMU格式、帧率），支持 EuRoC / OIVIO 格式 | 输入数据准备   |
+| **vio\_frontend.md**   | 视觉前端（光流追踪、特征选择、稀疏匹配）实现原理与配置方法               | 视觉前端     |
+| **vio\_backend.md**    | VIO 后端（非线性优化、IMU残差建模、滑窗）原理与实现               | VIO 状态估计 |
+| **vignette\_calib.md** | 图像亮度（Vignetting）标定流程与插值模型                   | 输入校正增强   |
+| **imu\_calib.md**      | IMU 噪声标定流程、bias估计与插值方式                      | 输入数据准备   |
+| **visualizer.md**      | 可视化模块的使用方法，包括图像、残差、轨迹展示                     | 输出与调试    |
+图像/IMU数据 (bag or raw) →  [vignette矫正 + 去畸变]  →  
+ → VIO 前端 (vio_frontend.md) → VIO 后端优化 (vio_backend.md) 
+ → 滑动窗口管理 + Marg → 输出轨迹 / 图像 / log (visualizer.md)
+
+【Calibration.md 的核心用途】
+它描述的就是：如何使用 Basalt 自带工具对相机和 IMU 进行标定，自动生成标准配置文件 calibration.json，用于后续 Basalt 系统运行。
+basalt_calibrate --dataset-path ~/oivio_calib_data/cam_april.bag --dataset-type bag --aprilgrid /usr/etc/basalt/aprilgrid_6x6.json --result-path ~/oivio_calib_result/ --cam-types ds ds
+basalt_calibrate_imu --dataset-path ~/oivio_calib_data/imu_april.bag --dataset-type bag --aprilgrid /usr/etc/basalt/aprilgrid_6x6.json --result-path ~/oivio_calib_result/ --gyro-noise-std 0.000282 --accel-noise-std 0.016 --gyro-bias-std 0.0001 --accel-bias-std 0.001
+
+basalt_calibrate --dataset-path ~/euroc_calib_data/cam_april.bag --dataset-type bag --aprilgrid /usr/etc/basalt/aprilgrid_6x6.json --result-path ~/euroc_calib_result/ --cam-types ds ds
+basalt_calibrate_imu --dataset-path ~/euroc_calib_data/imu_april.bag --dataset-type bag --aprilgrid /usr/etc/basalt/aprilgrid_6x6.json --result-path ~/euroc_calib_result/ --gyro-noise-std 0.000282 --accel-noise-std 0.016 --gyro-bias-std 0.0001 --accel-bias-std 0.001
+
+basalt_calibrate --dataset-path ~/uzh_calib_data/indoor_forward_calib_snapdragon_cam.bag --dataset-type bag --aprilgrid /usr/etc/basalt/aprilgrid_5x4_uzh.json --result-path ~/uzh_calib_result/ --cam-types ds ds
+basalt_calibrate_imu --dataset-path ~/uzh_calib_data/indoor_forward_calib_snapdragon_imu.bag --dataset-type bag --aprilgrid /usr/etc/basalt/aprilgrid_5x4_uzh.json --result-path ~/uzh_calib_result/ --gyro-noise-std 0.05 --accel-noise-std 0.1 --gyro-bias-std 4e-5 --accel-bias-std 0.002
+
+basalt_calibrate --dataset-path ~/kalibr_calib_data/static/static.bag --dataset-type bag --aprilgrid /usr/etc/basalt/aprilgrid_6x6.json --result-path ~/kalibr_calib_result/ --cam-types ds ds ds ds
+basalt_calibrate_imu --dataset-path ~/kalibr_calib_data/dynamic/dynamic.bag --dataset-type bag --aprilgrid /usr/etc/basalt/aprilgrid_6x6.json --result-path ~/kalibr_calib_result/ --gyro-noise-std 0.005 --accel-noise-std 0.01 --gyro-bias-std 4.0e-06 --accel-bias-std 0.0002
+
+basalt_calibrate --dataset-path ~/tumvi_calib_data/dataset-calib-cam3_512_16.bag --dataset-type bag --aprilgrid /usr/etc/basalt/aprilgrid_6x6.json --result-path ~/tumvi_calib_result/ --cam-types ds ds
+basalt_calibrate_imu --dataset-path ~/tumvi_calib_data/dataset-calib-imu1_512_16.bag --dataset-type bag --aprilgrid /usr/etc/basalt/aprilgrid_6x6.json --result-path ~/tumvi_calib_result/ --gyro-noise-std 0.000282 --accel-noise-std 0.016 --gyro-bias-std 0.0001 --accel-bias-std 0.001
+
+
+basalt_vio --dataset-path MH_05_difficult/ --cam-calib /usr/etc/basalt/euroc_ds_calib.json --dataset-type euroc --config-path /usr/etc/basalt/euroc_config.json --marg-data euroc_marg_data --show-gui 1
+basalt_vio --dataset-path TN_015_GV_01 --cam-calib /usr/etc/basalt/oivio_ds_calib.json --dataset-type oivio --config-path /usr/etc/basalt/oivio_config.json --marg-data oivio_marg_data --show-gui 1
+basalt_vio --dataset-path TN_015_GV_01 --cam-calib /usr/etc/basalt/euroc_ds_calib.json --dataset-type oivio --config-path /usr/etc/basalt/euroc_config.json --marg-data oivio_marg_data --show-gui 1
+
+basalt_mapper --cam-calib /usr/etc/basalt/euroc_ds_calib.json --marg-data euroc_marg_data
+basalt_mapper --cam-calib /usr/etc/basalt/oivio_ds_calib.json --marg-data oivio_marg_data
+
+basalt_opt_flow --dataset-path MH_05_difficult/ --cam-calib /usr/etc/basalt/euroc_ds_calib.json --dataset-type euroc --config-path /usr/etc/basalt/euroc_config.json --show-gui 1
+basalt_opt_flow --dataset-path TN_015_GV_01/ --cam-calib /usr/etc/basalt/oivio_ds_calib.json --dataset-type oivio --config-path /usr/etc/basalt/oivio_config.json --show-gui 1
+
+basalt_vio_sim --cam-calib /usr/etc/basalt/euroc_ds_calib.json --marg-data sim_marg_data --show-gui 1
+basalt_vio_sim --cam-calib /usr/etc/basalt/oivio_ds_calib.json --marg-data sim_marg_data --show-gui 1
+basalt_vio_sim --cam-calib ~/Datasets/MIN3D_basalt/config/min3d_ds_calib.json --marg-data ~/Datasets/MIN3D_basalt/min3d_marg_data --show-gui 1
+
+cd ~/basalt
+./scripts/install_deps.sh
+rm -f build && mkdir build
+cd build
+cmake .. -DCMAKE_BUILD_TYPE=RelWithDebInfo
+make -j8   
+
+cd ~/basalt
+./scripts/install_deps.sh
+mkdir build
+cd build
+cmake -DCMAKE_BUILD_TYPE=Debug ..
+make
+
+gdb --args ./basalt/build/basalt_opt_flow --dataset-path ./oivio/TN_015_GV_01 --cam-calib /usr/etc/basalt/oivio_ds_calib.json --dataset-type oivio --config-path /usr/etc/basalt/oivio_config.json --show-gui 1
+gdb --args ./basalt/build/basalt_vio --dataset-path ./oivio/TN_015_GV_01 --cam-calib /usr/etc/basalt/oivio_ds_calib.json --dataset-type oivio --config-path /usr/etc/basalt/oivio_config.json --marg-data oivio_marg_data --show-gui 1
+
+break feed_images
+break basalt::OivioDatasetIo::read
+break feed_images
+
+break get_image_data
+run
+
+bt
+
+sudo cp /home/zyy/basalt/data/updated_oivio_ds_calib.json /usr/etc/basalt/
+
+
+    cd ~/catkin_ws/src
+    git clone https://github.com/HKUST-Aerial-Robotics/VINS-Mono.git
+    cd ../
+    catkin_make
+    source ~/catkin_ws/devel/setup.bash
+    
+        roslaunch vins_estimator euroc.launch 
+    roslaunch vins_estimator vins_rviz.launch
+    rosbag play YOUR_PATH_TO_DATASET/MH_01_easy.bag 
+    
+        roslaunch benchmark_publisher publish.launch  sequence_name:=MH_05_difficult
+            roslaunch vins_estimator euroc_no_extrinsic_param.launch
+
+
+cd ~/catkin_ws/src/VINS-Mono/docker
+make build
+./run.sh LAUNCH_FILE_NAME   # ./run.sh euroc.launch
+
+~/Algs/basalt/build/basalt_vio \
+  --dataset-path ~/Datasets/MIN3D_basalt/und_1/ \
+  --cam-calib /usr/etc/basalt/euroc_ds_calib.json \
+  --dataset-type euroc \
+  --config-path /usr/etc/basalt/euroc_config.json \
+  --marg-data euroc_marg_data \
+  --show-gui 1
+
+echo 'export PATH=$PATH:$HOME/Algs/basalt/build' >> ~/.bashrc
+source ~/.bashrc
+
+basalt_vio --dataset-path TN_015_GV_01 --cam-calib /usr/etc/basalt/updated_oivio_ds_calib.json --dataset-type oivio --config-path /usr/etc/basalt/oivio_config.json --marg-data oivio_marg_data --show-gui 1
+
+cd ~/Algs/basalt/build
+cmake -DCMAKE_BUILD_TYPE=Debug ..
+make
+
+gdb --args ~/Algs/basalt/build/basalt_vio \
+  --dataset-path ~/Datasets/MIN3D_basalt/und_1 \
+  --cam-calib ~/Datasets/MIN3D_basalt/config/min3d_ds_calib.json \
+  --config-path ~/Datasets/MIN3D_basalt/config/min3d_config.json \
+  --dataset-type euroc \
+  --marg-data ~/Datasets/MIN3D_basalt/min3d_marg_data \
+  --show-gui 1
+
+~/Algs/basalt/build/basalt_vio \
+  --dataset-path ~/Datasets/MIN3D_basalt/und_1_stereo \
+  --cam-calib ~/Datasets/MIN3D_basalt/und_1_stereo/config/min3d_ds_calib.json \
+  --config-path ~/Datasets/MIN3D_basalt/und_1_stereo/config/min3d_config.json \
+  --dataset-type euroc \
+  --marg-data ~/Datasets/MIN3D_basalt/und_1_stereo/min3d_marg_data \
+  --show-gui 1
+
+~/Algs/basalt/build/basalt_vio \
+  --dataset-path ~/Datasets/MIN3D_basalt/und_1 \
+  --cam-calib ~/Datasets/MIN3D_basalt/config/min3d_ds_calib.json \
+  --config-path ~/Datasets/MIN3D_basalt/config/min3d_config.json \
+  --dataset-type euroc \
+  --marg-data ~/Datasets/MIN3D_basalt/min3d_marg_data \
+  --show-gui 1 \
+  | tee ~/Datasets/MIN3D_basalt/logs_img_he/log_deblur.txt
+  
+gdb --args basalt_vio   --dataset-path ~/Datasets/OIVIO_basalt/TN_015_GV_01   --cam-calib ~/Datasets/OIVIO_basalt/config/oivio_ds_calib.json   --dataset-type euroc   --config-path ~/Datasets/OIVIO_basalt/config/oivio_config.json   --marg-data ~/Datasets/OIVIO_basalt/config/oivio_marg_data   --show-gui 1
+
+basalt_vio --dataset-path ~/Datasets/OIVIO_basalt/TN_015_GV_01 --cam-calib ~/Datasets/OIVIO_basalt/config/oivio_ds_calib.json --dataset-type euroc --config-path ~/Datasets/OIVIO_basalt/config/oivio_config.json --marg-data ~/Datasets/OIVIO_basalt/config/oivio_marg_data --show-gui 1
+
+basalt_vio --dataset-path ~/Datasets/OIVIO_basalt/TN_015_GV_01 --cam-calib /usr/etc/basalt/euroc_ds_calib.json --dataset-type euroc --config-path /usr/etc/basalt/euroc_config.json --marg-data ~/Datasets/OIVIO_basalt/config/oivio_marg_data --show-gui 1
+basalt_vio --dataset-path MH_05_difficult/ --cam-calib /usr/etc/basalt/euroc_ds_calib.json --dataset-type euroc --config-path /usr/etc/basalt/euroc_config.json --marg-data euroc_marg_data --show-gui 1
+
+✅ optical flow 部分
+参数	含义
+"config.optical_flow_type": "frame_to_frame"	使用前后帧之间的光流跟踪方式（另一种可能是参考关键帧）。
+"config.optical_flow_detection_grid_size": 50	图像分为网格区域，在每个区域中寻找角点。50 表示每个网格为 50×50 像素。
+"config.optical_flow_pattern": 51	定义 LK optical flow 的 patch 尺寸，51 表示使用 51x51 的滑窗。
+"config.optical_flow_max_iterations": 5	每个点的迭代次数上限。越大越稳定但越慢。
+"config.optical_flow_max_recovered_dist2": 0.04	最大允许的 LK 跟踪距离平方，超过这个认为失败。
+"config.optical_flow_epipolar_error": 0.005	用于立体约束的极线误差阈值，超过则视为无效匹配。
+"config.optical_flow_levels": 3	使用的图像金字塔层数，用于处理大位移。
+"config.optical_flow_skip_frames": 1	每隔多少帧做一次 optical flow，1 表示每帧都做。
+✅ VIO 后端部分（VIO Filter + Marginalization）
+参数	含义
+"config.vio_linearization_type": "ABS_QR"	线性化方式，ABS_QR 是一种稀疏 Jacobian 优化方案。
+"config.vio_sqrt_marg": true	是否对边缘化信息做平方根信息形式，提升数值稳定性。
+"config.vio_max_states": 3	VIO窗口中最多保留多少帧状态。
+"config.vio_max_kfs": 7	最多多少关键帧在窗口中。
+"config.vio_min_frames_after_kf": 5	插入新关键帧前需经过的最小普通帧数。
+"config.vio_new_kf_keypoints_thresh": 0.7	若新帧与当前关键帧的公共特征点比例低于此值则新建关键帧。
+"config.vio_debug": false	启用 debug 输出。
+"config.vio_obs_std_dev": 0.5	观测值噪声的标准差，用于加权误差项。
+"config.vio_obs_huber_thresh": 1.0	Huber核函数的阈值，大于此值时用鲁棒函数下权重。
+"config.vio_min_triangulation_dist": 0.05	最小三角化距离，过近的视差不可信。
+"config.vio_outlier_threshold": 3.0	残差超过3倍 std dev 的观测将被剔除。
+"config.vio_max_iterations": 7	后端每帧最大优化迭代次数。
+✅ Mapper 部分（Loop-less Mapping）
+参数	含义
+"config.mapper_detection_num_points": 800	每帧最多检测的特征点数量。
+"config.mapper_num_frames_to_match": 30	在地图构建阶段，每帧要匹配最近的多少帧。
+"config.mapper_min_matches": 20	关键帧之间最少的特征匹配数量，低于不构图。
+"config.mapper_ransac_threshold": 5e-05	用于2D-2D特征匹配的RANSAC阈值，单位像素。
+"config.mapper_min_triangulation_dist": 0.07	3D重建时的最小视差距离。
+
+🎯 你的核心问题：
+你有两个数据集（OIVIO 和 MIN3D），它们：
+    相机模型都是 pinhole + radial-tangential（常见 Kalibr 输出）
+    标定文件是原生的 .yaml，但 Basalt 要求的是 .json 格式，还不兼容 pinhole + radtan
+    用 Basalt 官方标定工具也不适配（因为你没有用 AprilGrid 拍摄的标定图像）
+✅ 解决方案总结：必须自己生成 calibration.json，但可以从现有标定文件自动转换
+
+lost_ratio	关键帧丢失率（关键帧追踪失败的占比）	>0.7 很糟糕，系统几乎处于漂移状态
+max_zero_streak	连续帧 unconnected 的最长长度	==62 表示一整段都无特征连接
+error_diff	优化误差最早帧 vs 最后帧的差值	趋势负值大说明误差一直在变小
+error_trend	shrinking or growing	shrinking是收敛趋势，growing是发散
+reject_ratio	被 reject（剔除）观测占比	>0.35 表示观测点质量差，前端匹配失败
+
+        "T_imu_cam": [
+            {
+                "px":  0.0,
+                "py":  0.0,
+                "pz":  0.0,
+                "qx":  0.0,
+                "qy":  0.0,
+                "qz":  0.0,
+                "qw":  1.0
+            },
+            {
+                "px":  0.04977600813064374,
+                "py":  0.18581703698873264,
+                "pz":  0.0910200059072446,
+                "qx":  0.01788891880801473,
+                "qy":  0.017558674624491708,
+                "qz": -0.01445088525506433,
+                "qw":  0.9995813380834281
+            }
+        ],
+        "intrinsics": [
+            {
+                "camera_type": "ds",
+                "intrinsics": {
+                    "fx": 380.87070014138595,
+                    "fy": 380.2622704779021,
+                    "cx": 318.1808885249687,
+                    "cy": 235.64044052538762,
+                    "xi": 1.5,
+                    "alpha": 0
+                }
+            },
+            {
+                "camera_type": "ds",
+                "intrinsics": {
+                    "fx": 503.6850530980714,
+                    "fy": 502.8670688272564,
+                    "cx": 312.3016567655048,
+                    "cy": 205.81746244874245,
+                    "xi": -0.2409573942178872,
+                    "alpha": 0.566996899163044
+                }
+            }
+        ],
+        "T_imu_cam": [
+            {
+                "px":  0.04977600813064374,
+                "py":  0.18581703698873264,
+                "pz":  0.0910200059072446,
+                "qx":  0.01788891880801473,
+                "qy":  0.017558674624491708,
+                "qz": -0.01445088525506433,
+                "qw":  0.9995813380834281
+            },
+            {
+                "px":  0.0,
+                "py":  0.0,
+                "pz":  0.0,
+                "qx":  0.0,
+                "qy":  0.0,
+                "qz":  0.0,
+                "qw":  1.0
+            }
+        ],
+        "intrinsics": [
+            {
+                "camera_type": "ds",
+                "intrinsics": {
+                    "fx": 503.6850530980714,
+                    "fy": 502.8670688272564,
+                    "cx": 312.3016567655048,
+                    "cy": 205.81746244874245,
+                    "xi": -0.2409573942178872,
+                    "alpha": 0.566996899163044
+                }
+            },
+            {
+                "camera_type": "ds",
+                "intrinsics": {
+                    "fx": 380.87070014138595,
+                    "fy": 380.2622704779021,
+                    "cx": 318.1808885249687,
+                    "cy": 235.64044052538762,
+                    "xi": 1.5,
+                    "alpha": 0
+                }
+            }
+        ],
+                    "xi": -0.2409573942178872,
+                    "alpha": 0.566996899163044
+"xi": -0.2409573942178872,
+                    "alpha": 0.566996899163044
+                    "xi": -0.21300835384809328,
+                    "alpha": 0.5767008625037023
+print("rgb_rs quat (xyzw):", tuple(quat0))
+print("rgb_usb quat (xyzw):", tuple(quat1))
+print("ir_rs_right quat (xyzw):", tuple(quat4))
+print("ir_rs_left quat (xyzw):", tuple(quat5))                  
+,
+        "vignette": [
+            {
+                "value0": 0,
+                "value1": 50000000000,
+                "value2": [
+                    [
+                         1.0
+                    ],
+                    [
+                         1.0
+                    ],
+                    [
+                         1.0
+                    ],
+                    [
+                         1.0
+                    ],
+                    [
+                         1.0
+                    ],
+                    [
+                         0.977014799737916
+                    ],
+                    [
+                         0.963099657065011
+                    ],
+                    [
+                         0.922192868484681
+                    ],
+                    [
+                         0.854947649264748
+                    ],
+                    [
+                         0.775979681731632
+                    ],
+                    [
+                         0.722888431826212
+                    ],
+                    [
+                         0.0686113338332548
+                    ],
+                    [
+                         0.0686113338332548
+                    ],
+                    [
+                         0.0686113338332548
+                    ],
+                    [
+                         0.0686113338332548
+                    ]
+                ]
+            },
+            {
+                "value0": 0,
+                "value1": 50000000000,
+                "value2": [
+                    [
+                         1.0
+                    ],
+                    [
+                         1.0
+                    ],
+                    [
+                         1.0
+                    ],
+                    [
+                         1.0
+                    ],
+                    [
+                         1.0
+                    ],
+                    [
+                         0.977014799737916
+                    ],
+                    [
+                         0.963099657065011
+                    ],
+                    [
+                         0.922192868484681
+                    ],
+                    [
+                         0.854947649264748
+                    ],
+                    [
+                         0.775979681731632
+                    ],
+                    [
+                         0.722888431826212
+                    ],
+                    [
+                         0.0686113338332548
+                    ],
+                    [
+                         0.0686113338332548
+                    ],
+                    [
+                         0.0686113338332548
+                    ],
+                    [
+                         0.0686113338332548
+                    ]
+                ]
+            }
+        ]

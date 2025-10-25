@@ -1,0 +1,110 @@
+目前直接build都是索引不到pangolin的，所以我去检查了一下发现pangolin确实没有装好，所以先装pangolin
+cd ~/Packages/Pangolin
+mkdir -p build && cd build
+# 重要：开启 CMake 编译并安装
+cmake -DCMAKE_BUILD_TYPE=Release ..
+make -j$(nproc)
+# 安装到 /usr/local/，或者你可以指定自定义路径
+sudo make install
+截至到这里 我们把pangolin放进了系统路径，所以接下来可以直接编译了
+
+运行非ROS模式：
+cd ~/Algs/orbslam3
+
+./Examples/Monocular-Inertial/mono_inertial_euroc \
+    Vocabulary/ORBvoc.txt \
+    Examples/Monocular-Inertial/EuRoC.yaml \
+    ~/Datasets/euroc_data/MH_05_difficult/mav0 \
+    ~/Datasets/euroc_data/MH_05_difficult/mav0/cam0/data.csv 
+    
+cd ~/Algs/orbslam3
+
+./Examples/Monocular-Inertial/mono_inertial_euroc \
+    Vocabulary/ORBvoc.txt \
+    Examples/Monocular-Inertial/EuRoC.yaml \
+    ~/Datasets/euroc_data/MH_01_easy \
+    ~/Datasets/euroc_data/MH_01_easy/mav0/cam0/data.csv 
+./Examples/Monocular/mono_euroc \
+    Vocabulary/ORBvoc.txt \
+    Examples/Monocular/EuRoC.yaml \
+    ~/Datasets/euroc_data/MH_01_easy \
+    ~/Datasets/euroc_data/MH_01_easy/mav0/cam0/data.csv 
+    
+这样的结果就是会保存到我规定的路径Saving trajectory to /home/zyy/Datasets/euroc_data/euroc_groundtruth_txt/MH_01_easy/CameraTrajectory.txt ...
+There are 1 maps in the atlas
+  Map 0 has 359 KFs
+End of saving trajectory to /home/zyy/Datasets/euroc_data/euroc_groundtruth_txt/MH_01_easy/CameraTrajectory.txt ...
+Saving keyframe trajectory to /home/zyy/Datasets/euroc_data/euroc_groundtruth_txt/MH_01_easy/KeyFrameTrajectory.txt ...
+
+然后需要用python脚本把它们都转成能用的格式：
+cd ~/Datasets/euroc_data/euroc_groundtruth_txt
+python3 convert_gt.py --seq MH_01_easy
+cd ~/Datasets/euroc_data/euroc_groundtruth_txt/MH_01_easy
+evo_ape tum MH_01_easy_gt_tum.txt CameraTrajectory_tum.txt --align --plot --save_results ape.json
+
+截至到目前就是跑通了demo中的mono_imu，现在开始跑OIVIO。
+ls /home/zyy/Datasets/oivio/MN_015_GV_01/cam0/data | head
+head -n 5 /home/zyy/Datasets/oivio/MN_015_GV_01/imu0/data.csv
+
+cd ~/Algs/orbslam3
+rm -rf build && ./build.sh
+./Examples/Monocular-Inertial/mono_inertial_oivio \
+  Vocabulary/ORBvoc.txt \
+  Examples/Monocular-Inertial/OIVIO.yaml \
+  ~/Datasets/OIVIO/MN_015_GV_01 \
+  ~/Datasets/OIVIO/MN_015_GV_01/imu0/data.csv
+
+【运行】
+cd ~/Algs/orbslam3
+./build.sh
+./Examples/Monocular-Inertial/mono_inertial_oivio \
+  Vocabulary/ORBvoc.txt \
+  Examples/Monocular-Inertial/OIVIO.yaml \
+  ~/Datasets/OIVIO/MN_015_GV_01 \
+  ~/Datasets/OIVIO/MN_015_GV_01/imu0/data.csv
+
+cd ~/Algs/orbslam3
+./build.sh
+./Examples/Monocular-Inertial/mono_inertial_MIN3D \
+  Vocabulary/ORBvoc.txt \
+  Examples/Monocular-Inertial/MIN3D.yaml \
+  ~/Datasets/MIN3D_orb3/und_3 \
+  ~/Datasets/MIN3D_orb3/und_3/time.csv
+修改MIN3D.yaml，重写mono_inertial_MIN3D.cc和CMakeLists.txt
+来自 Intel RealSense 官方开发文档（RealSense D455 specs + SDK API 文档）以及社区测试：
+IMU.NoiseGyro: 0.00015       # rad/s/√Hz
+IMU.NoiseAcc: 0.0014         # m/s²/√Hz
+IMU.GyroWalk: 1.0e-5         # rad/s²
+IMU.AccWalk: 2.0e-4          # m/s³
+IMU.Frequency: 400.0         # Hz
+
+发现RGB-D是不能用的 所以现在就重新尝试mono_imu和mono
+其中mono_imu里面是这样的结构
+zyy@zyy:~/Datasets/MIN3D_orb3/und_3$ ls
+imu.csv  RGB_RS  time.csv
+它运行的时候LoadImage是需要用time.csv这样一个目录 用来load图片 而且LoadImu要求不能有表头
+然后我写了一个脚本用来批量构造这个数据集 
+python3 ~/Datasets/MIN3D_orb3/generate_time_csv.py
+然后批量运行
+cd ~/Algs/orbslam3
+./build.sh
+./Examples/Monocular-Inertial/mono_inertial_MIN3D \
+  Vocabulary/ORBvoc.txt \
+  Examples/Monocular-Inertial/MIN3D.yaml \
+  ~/Datasets/MIN3D_orb3/und_1 \
+  ~/Datasets/MIN3D_orb3/und_1/time.csv \
+  ~/Datasets/MIN3D_orb3/und_2 \
+  ~/Datasets/MIN3D_orb3/und_2/time.csv 
+关于mono直接运行的话文件读取是不能读取.png的 所以一般都要改一下.cc文件里面的LoadImages这个函数
+改完以后demo就能跑通了 但是这个mono是不带可视化的 只有两个结果文件
+接下来 同样的 修改MIN3D.yaml，重写mono_MIN3D.cc和在CMakeLists.txt里面加入相应的内容
+cd ~/Algs/orbslam3
+./build.sh
+./Examples/Monocular/mono_MIN3D \
+  Vocabulary/ORBvoc.txt \
+  Examples/Monocular/MIN3D.yaml \
+  ~/Datasets/MIN3D_orb3/und_1 \
+  ~/Datasets/MIN3D_orb3/und_1/time.csv
+  
+ mono结果失败。。。
+

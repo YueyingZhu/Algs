@@ -1,0 +1,200 @@
+sudo apt-get install ros-noetic-image-geometry ros-noetic-pcl-ros ros-noetic-cv-bridge
+# For 20.04 (noetic)
+sudo apt-get install -y --no-install-recommends apt-utils
+sudo apt-get install -y \
+      cmake build-essential unzip pkg-config autoconf \
+      libboost-all-dev \
+      libjpeg-dev libpng-dev libtiff-dev \
+# Use libvtk5-dev, libgtk2.0-dev in ubuntu 16.04 \
+      libvtk7-dev libgtk-3-dev \
+      libatlas-base-dev gfortran \
+      libparmetis-dev \
+      python3-wstool python3-catkin-tools \
+      
+# Setup catkin workspace
+mkdir -p ~/Algs/kimera/src
+cd ~/Algs/kimera/
+catkin init
+catkin config --cmake-args -DCMAKE_BUILD_TYPE=Release -DGTSAM_TANGENT_PREINTEGRATION=OFF
+# On Ubuntu 16.04:
+# catkin config --cmake-args -DCMAKE_BUILD_TYPE=Release -DGTSAM_USE_SYSTEM_EIGEN=ON -DGTSAM_TANGENT_PREINTEGRATION=OFF
+
+catkin config --merge-devel
+
+# Add workspace to bashrc for automatic sourcing of workspace.
+echo 'source ~/Algs/kimera/devel/setup.bash' >> ~/.bashrc
+
+# Clone repo
+cd ~/Algs/kimera/src
+# For ssh:
+# git clone git@github.com:MIT-SPARK/Kimera-VIO-ROS.git
+# For https:
+git clone https://github.com/MIT-SPARK/Kimera-VIO-ROS.git
+
+# Install dependencies from rosinstall file using wstool
+wstool init # Use unless wstool is already initialized
+
+# For ssh:
+# wstool merge Kimera-VIO-ROS/install/kimera_vio_ros_ssh.rosinstall
+# For https
+wstool merge Kimera-VIO-ROS/install/kimera_vio_ros_https.rosinstall
+
+# download and update repos:
+wstool update
+
+# Optionally install all dependencies that you might have missed:
+# Some packages may report errors, this is expected
+# rosdep install --from-paths . --ignore-src -r -y
+
+# Compile code
+catkin build
+
+# Refresh workspace
+source ~/Algs/kimera/devel/setup.bash
+【安装总结】
+sudo apt-get install ros-noetic-image-geometry ros-noetic-pcl-ros ros-noetic-cv-bridge
+sudo apt-get install -y --no-install-recommends apt-utils
+sudo apt-get install -y \
+      cmake build-essential unzip pkg-config autoconf \
+      libboost-all-dev \
+      libjpeg-dev libpng-dev libtiff-dev \
+      libvtk7-dev libgtk-3-dev \
+      libatlas-base-dev gfortran \
+      libparmetis-dev \
+      python3-wstool python3-catkin-tools \
+mkdir -p ~/Algs/kimera/src
+cd ~/Algs/kimera/
+catkin init
+catkin config --cmake-args -DCMAKE_BUILD_TYPE=Release -DGTSAM_TANGENT_PREINTEGRATION=OFF
+catkin config --merge-devel
+echo 'source ~/Algs/kimera/devel/setup.bash' >> ~/.bashrc
+cd ~/Algs/kimera/src
+git clone https://github.com/MIT-SPARK/Kimera-VIO-ROS.git
+wstool init 
+wstool merge Kimera-VIO-ROS/install/kimera_vio_ros_https.rosinstall
+wstool update
+export OpenCV_DIR=/opt/opencv-4.2.0/lib/cmake/opencv4
+sudo ln -s /opt/opencv-4.2.0/include/opencv4 /usr/include/opencv4
+echo 'export OpenCV_DIR=/opt/opencv-4.2.0/lib/cmake/opencv4' >> ~/.bashrc
+echo 'export LD_LIBRARY_PATH=/opt/opencv-4.2.0/lib:$LD_LIBRARY_PATH' >> ~/.bashrc
+source ~/.bashrc
+catkin config --cmake-args -DCMAKE_BUILD_TYPE=Release -DOpenCV_DIR=$OpenCV_DIR
+catkin build
+
+catkin build
+source ~/Algs/kimera/devel/setup.bash
+
+现在的问题是opencv4的有些要用的.so文件找不到
+zyy@zyy:~$ ls /opt/opencv-4.2.0/lib | grep calib3d
+libopencv_calib3d.so
+libopencv_calib3d.so.408
+libopencv_calib3d.so.4.8.0
+因为我需要用软链接把/usr/include/opencv4链接成/opt/opencv-4.2.0/include/opencv4
+因为第一个好像是这个包自带的地址 第二个是我们自编译以后的地址 
+但是现在我们发现原本自编译的/opt/opencv-4.2.0/include/opencv4下装的是4.8.0的内容 所以我现在卸掉重新装
+~/Packages/opencv-4.2.0/opencv_contrib/modules/sfm模块有冲突 已经被我手动删除 
+cd ~/Packages/opencv-4.2.0/opencv
+rm -rf build
+mkdir build && cd build
+
+cmake .. \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_INSTALL_PREFIX=/opt/opencv-4.2.0 \
+  -DOPENCV_EXTRA_MODULES_PATH=~/Packages/opencv-4.2.0/opencv_contrib/modules \
+  -DBUILD_TESTS=OFF \
+  -DBUILD_PERF_TESTS=OFF \
+  -DBUILD_EXAMPLES=OFF
+
+make -j$(nproc)
+sudo make install
+装好了zyy@zyy:~/Algs/kimera$ ls /opt/opencv-4.2.0/lib | grep calib3d
+libopencv_calib3d.so
+libopencv_calib3d.so.4.2
+libopencv_calib3d.so.4.2.0
+catkin config的时候把opencv路径写进去没有用 不知道是不是因为这里面每个包有单独的CMakelists.txt
+所以我就把这些全部的.so文件都建立了软链接过去
+sudo ln -s /opt/opencv-4.2.0/lib/libopencv_calib3d.so.4.2.0 /usr/lib/x86_64-linux-gnu/libopencv_calib3d.so.4.2.0
+sudo ln -s /opt/opencv-4.2.0/lib/libopencv_calib3d.so.4.2 /usr/lib/x86_64-linux-gnu/libopencv_calib3d.so.4.2
+sudo ln -s /opt/opencv-4.2.0/lib/libopencv_calib3d.so /usr/lib/x86_64-linux-gnu/libopencv_calib3d.so
+cd /opt/opencv-4.2.0/lib
+for f in libopencv_*.so*; do
+    sudo ln -sf "$(pwd)/$f" /usr/lib/x86_64-linux-gnu/"$f"
+done
+（先尝试了三个 然后一键转换所有的）
+
+然后发现源码还需要Pangolin 然后
+cd ~/Algs/kimera/src
+git clone https://github.com/stevenlovegrove/Pangolin.git
+cd Pangolin
+mkdir build && cd build
+cmake .. \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_INSTALL_PREFIX=/opt/pangolin-0.6 \
+  -DBUILD_PANGOLIN_PYTHON=OFF \
+  -DBUILD_PANGOLIN_VARS=ON \
+  -DBUILD_EXAMPLES=OFF \
+  -DCMAKE_CXX_FLAGS="-Wno-deprecated-copy"
+make -j$(nproc)
+sudo make install
+然后有一点问题 好像是可以被忽略的报错 所以重新cmake一下
+cd ~/Algs/kimera/src/pangolin
+rm -rf build && mkdir build && cd build
+
+cmake .. \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_INSTALL_PREFIX=/opt/pangolin-0.6 \
+  -DBUILD_PANGOLIN_PYTHON=OFF \
+  -DBUILD_PANGOLIN_VARS=ON \
+  -DBUILD_EXAMPLES=OFF \
+  -DCMAKE_CXX_FLAGS="-Wno-deprecated-copy"
+
+make -j$(nproc)
+sudo make install
+重新编译kimera
+cd ~/Algs/kimera
+catkin config --cmake-args -DCMAKE_BUILD_TYPE=Release -DOpenCV_DIR=$OpenCV_DIR
+catkin build
+source ~/Algs/kimera/devel/setup.bash
+现在可以用了
+online跑法太麻烦了 我先尝试offline跑法
+roslaunch kimera_vio_ros kimera_vio_ros_euroc.launch online:=false rosbag_path:="PATH/TO/ROSBAG"
+roslaunch kimera_vio_ros kimera_vio_ros_euroc.launch online:=false rosbag_path:="/home/zyy/Datasets/euroc_data/MH_01_easy.bag"
+roslaunch kimera_vio_ros kimera_vio_ros_oivio.launch online:=true
+在 RosbagDataProvider.cpp 中，Kimera 使用 ROS image_transport 机制订阅图像，它可能默认期望 /cam0/image_raw/compressed 等类型。而你手上的 EuRoC .bag 文件只包含 /cam0/image_raw 类型为 sensor_msgs/Image。
+所以如果你不显式设置 image_transport:=raw，它会尝试找不到的 topic。
+roslaunch kimera_vio_ros kimera_vio_ros_euroc.launch online:=false rosbag_path:=/home/zyy/Datasets/euroc_data/MH_01_easy.bag image_transport:=raw
+
+rosbag play ~/Datasets/OIVIO_svo2/MN_015_GV_01.bag --clock
+
+rviz -d $(rospack find kimera_vio_ros)/rviz/kimera_vio_euroc.rviz
+rviz -d ~/Algs/kimera/src/Kimera-VIO-ROS/rviz/kimera_vio_euroc.rviz
+
+现在两个都尝试跑了 也重新写了标定文件和launch文件 但是首先demo里面的mono就是没有mesh的
+所以我觉得要开始调参了 就是在这个包里就是frontend的内容需要调整
+| 参数                              | 当前  | 建议               |
+| --------------------------------- | ---- | ------------------ |
+| `toleranceTemplateMatching`       | 0.15 | **0.05**           |
+| `minNrStereoInliers`              | 5    | **10**             |
+| `ransac_threshold_stereo`         | 1    | **0.5**            |
+| `subpixelRefinementStereo`        | 0    | **1**              |
+| `optical_flow_predictor_type`     | 1    | **0**              |
+| `use_pnp_tracking`                | 0    | **1**              |
+| `optimize_2d3d_pose_from_inliers` | 0    | **1**              |
+| `equalizeImage`                   | 0    | **1（如光照差）**        |
+| `maxFeaturesPerFrame`             | 300  | **500–800**（如计算允许） |
+| `min_intra_keyframe_time`         | 0.2  | **0.1**            |
+| `max_intra_keyframe_time`         | 5.0  | **1.0**            |
+调参没什么结果 总之最后就是kimera很难绕过imu
+所以先尝试一下MIN3D看看是不是imu的影响 还是左右眼对不上
+roslaunch kimera_vio_ros kimera_vio_d455_MIN3D.launch
+rosbag play /home/zyy/Datasets/MIN3D_kimera/IR/und_1_rs.bag --clock
+rviz -d $(rospack find kimera_vio_ros)/rviz/kimera_vio_euroc.rviz
+【stereo+imu】
+roslaunch kimera_vio_ros kimera_vio_ros_MIN3D.launch 
+rosbag play /home/zyy/Datasets/MIN3D_kimera/und_1_stereo+imu.bag --clock
+rviz -d $(rospack find kimera_vio_ros)/rviz/kimera_vio_euroc.rviz
+
+##重新跑的时候 还是会出现编译错误
+cmake_minimum_required(VERSION 2.8.3)
+
+

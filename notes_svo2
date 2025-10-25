@@ -1,0 +1,174 @@
+【Install dependences】
+Install catkin tools and vcstools if you haven't done so before. Depending on your operating system, run
+# For Ubuntu 20.04 + Noetic
+sudo apt-get install python3-catkin-tools python3-vcstool python3-osrf-pycommon
+Install system dependencies and dependencies for Ceres Solver
+# system dep.
+sudo apt-get install libglew-dev libopencv-dev libyaml-cpp-dev 
+# Ceres dep.
+sudo apt-get install libblas-dev liblapack-dev libsuitesparse-dev
+【Clone and compile】
+Create a workspace and clone the code (ROS-DISTRO=melodic/noetic):
+cd ~/Algs/svo2
+# see below for the reason for specifying the eigen path
+catkin config --init --mkdirs --extend /opt/ros/noetic --cmake-args -DCMAKE_BUILD_TYPE=Release -DEIGEN3_INCLUDE_DIR=/usr/include/eigen3
+cd src
+git clone http://github.com/uzh-rpg/rpg_svo_pro_open.git
+官方用的 vcs-import 默认拉取的是开发者模式配置，假设你有 GitHub 的写权限（才用 SSH）。但我只需要 clone 就够，HTTPS 完全满足需求。
+sed -i 's/git@github.com:/https:\/\/github.com\//' rpg_svo_pro_open/dependencies.yaml
+vcs-import < ./rpg_svo_pro_open/dependencies.yaml
+touch minkindr/minkindr_python/CATKIN_IGNORE
+# vocabulary for place recognition
+cd rpg_svo_pro_open/svo_online_loopclosing/vocabularies && ./download_voc.sh
+cd ../../..
+There are two types of builds that you can proceed from here
+    Build without the global map (front-end + sliding window back-end + loop closure/pose graph)
+    catkin build    
+这里开始假设全局地图模式：（后来报错我就把它关掉了）
+Build with the global map using iSAM2 (all functionalities)
+First, enable the global map feature
+rm rpg_svo_pro_open/svo_global_map/CATKIN_IGNORE
+and in svo_cmake/cmake/Modules/SvoSetup.cmake
+SET(USE_GLOBAL_MAP TRUE)
+Second, clone GTSAM
+git clone --branch 4.0.3 http://github.com/borglab/gtsam.git
+and modify GTSAM compilation flags a bit:
+# 1. gtsam/CMakelists.txt: use system Eigen
+删掉option(GTSAM_USE_SYSTEM_EIGEN "Find and use system-installed Eigen. If 'off', use the one bundled with GTSAM" OFF)
+改为option(GTSAM_USE_SYSTEM_EIGEN "Find and use system-installed Eigen. If 'off', use the one bundled with GTSAM" ON)
+# 2. gtsam/cmake/GtsamBuildTypes: disable avx instruction set
+# below the line `list_append_cache(GTSAM_COMPILE_OPTIONS_PUBLIC "-march=native")`加入
+list_append_cache(GTSAM_COMPILE_OPTIONS_PUBLIC "-mno-avx")
+
+Using the same version of Eigen helps avoid memory issues. Disabling avx instruction set also helps with some segment faults in our experience (this can be however OS and hardware dependent).
+使用系统的 Eigen，而不是 GTSAM 附带的版本，这可以防止多个库链接不同版本的 Eigen 引发的内存错误（尤其是你在 ROS 中使用多个第三方库的时候）。
+虽然 -march=native 会根据你机器启用 AVX 加速，但某些 CPU（尤其是旧型号、低功耗型号或者容器化环境）可能不稳定，加入 -mno-avx 禁用 AVX 可避免运行时段错误（segfault）。
+
+然后把dbow2_catkin/CMakeLists.txt里的GIT_REPOSITORY git@github.com:dorian3d/DBoW2.git改为
+GIT_REPOSITORY http://github.com/dorian3d/DBoW2.git
+
+然后需要重装cv_bridge 我直接再src里面gitclone了
+cd ~/Algs/svo2/src
+rm -rf vision_opencv  # 删除之前可能不适配的版本
+git clone -b noetic https://github.com/ros-perception/vision_opencv.git
+然后编译
+cd ~/Algs/svo2
+catkin build cv_bridge
+# 用 OpenCV3 的 cv_bridge：
+source ~/catkin_ws/devel/setup.bash
+
+# 用 OpenCV4 的 cv_bridge：
+source ~/Algs/svo2/devel/setup.bash
+
+And finally build the whole workspace
+
+# building GTSAM may take a while
+catkin build
+好了 现在就是配置好了 可以开始调试了
+Run the visual front-end
+Remember to source the workspace first
+source ~/Algs/svo2/devel/setup.bash
+Example bags and launch files
+Download the test bag file from here. Launch SVO node:
+roslaunch svo_ros run_from_bag.launch cam_name:=svo_test_pinhole
+This will also start RVIZ. Then play the bag file:
+（很显然这个数据集还没下载 所以先下载：
+mkdir -p ~/Datasets/svo_demo
+cd ~/Datasets/svo_demo
+wget http://rpg.ifi.uzh.ch/datasets/airground_rig_s3_2013-03-18_21-38-48.bag
+然后再播放）
+rosbag play ~/Datasets/svo_demo/airground_rig_s3_2013-03-18_21-38-48.bag
+Now you should be able to observe the camera motion and sparse map in RVIZ.
+以下是鱼眼的 我就不试了
+You can also download another bag recorded with a fisheye camera. Then you need to change the following line in run_from_bag.launch:
+<rosparam file="$(find svo_ros)/param/pinhole.yaml" />
+to
+<rosparam file="$(find svo_ros)/param/fisheye.yaml" />
+And launch SVO via:
+roslaunch svo_ros run_from_bag.launch cam_name:=bluefox_25000826_fisheye
+Customize launch files
+We provide several example launch files under svo_ros/launch, such as:
+    run_from_bag.launch: run SVO on an topic that publishes images
+    live_nodelet.launch: run svo as nodelet. These files can not be launched directly, since they depend on some private packages. But they can be used as an example for using svo with other nodes.
+In the launch file, you have to specify the following for svo node/nodelet, as in run_from_bag.launch:
+    <!-- Camera topic to subscribe to -->
+    <param name="cam0_topic" value="camera/image_raw" type="str" />
+    
+    <!-- Camera calibration file -->
+    <param name="calib_file" value="$(arg calib_file)" />
+    
+    <!--Parameters-->
+    <rosparam file="$(find svo_ros)/param/pinhole.yaml" />
+
+  Note that SVO also supports stereo cameras.
+
+【Parameter files】
+
+We provide two example parameter files under svo_ros/param:
+
+    pinhole.yaml: for relatively small field of view cameras
+    fisheye.yaml: for cameras with wide angle lens (e.g., fisheye and catadioptric)
+
+The parameters in these files are typical values. If you wish to change the parameters, please refer to the comments in these two files.
+Camera calibration files
+
+If you want to use your own camera, make sure a global shutter camera is used. A good choice is the Bluefox camera from MatrixVision. You can put camera calibration files under svo_ros/calib and load them as in run_from_bag.launch. We use yaml files to specify camera parameters. Please refer to calibration.md for more details.
+Inertial-aided frontend
+
+Without using the relatively heavy ceres-based backend, the frontend can also use IMU to facilitate visual tracking. This is not as accurate as a tightly coupled VIO, but is relatively lightweight.
+
+We provide two launch files for EuRoC for monocular and stereo setups:（主要就是这两launch文件来setup）
+
+roslaunch svo_ros euroc_mono_frontend_imu.launch
+roslaunch svo_ros euroc_stereo_frontend_imu.launch
+
+These launch files read the parameters from param/euroc_mono_imu.yaml and param/euroc_stereo_imu.yaml. The parameters are not necessarily optimal for every sequence, but should be enough as a good starting point.
+
+The first several images of many EuRoC sequences are not good for initialize SVO, especially for the monocular case. Therefore it is better to start the bag at a later time, for example:
+
+rosbag play MH_01_easy.bag -s 50
+（加上我们的数据集的位置
+rosbag play ~/Datasets/euroc_data/MH_01_easy.bag -s 50
+）
+rosbag play MH_02_easy.bag -s 45
+rosbag play V1_01_easy.bag
+rosbag play V1_02_medium.bag -s 13
+rosbag play V2_01_easy.bag
+rosbag play V2_02_medium.bag -s 13
+
+This is to avoid, for example, strong rotation for monocular initialization. For more details on using SVO with this configuration, please read the step-by-step instruction.
+
+【运行】
+cd ~/Algs/svo2
+catkin build
+source ~/Algs/svo2/devel/setup.bash
+roslaunch svo_ros euroc_mono_frontend_imu.launch
+roslaunch svo_ros MIN3D_mono_frontend.launch
+
+rosbag play ~/Datasets/euroc_data/MH_01_easy.bag -s 50
+rosbag play ~/Datasets/MIN3D_svo2/RGB/und_3.bag --clock
+
+cd ~/Algs/svo2
+catkin build
+source ~/Algs/svo2/devel/setup.bash
+rosrun svo_ros save_svo_pose.py [datatype][sequence][mode]
+
+目前因为MIN3D的und_4和und_5是没有imu数据的 所以我们现在先尝试纯VO而且没有带loop 所以是 mono_frontend
+und_1,2,3的RGB_RS可以尝试使用mono_frontend_imu
+
+
+OIVIO全都是用的oivio_mono_frontend_imu.launch 
+
+接下来两个算法都可以尝试回环检测
+
+evo_ape tum \
+   /home/zyy/Datasets/euroc_data/gt_plslam/MH_01_easy/MH_01_easy_gt_tum.txt \
+   /home/zyy/svo_output_tum.txt \
+  --align --plot --correct_scale
+  
+vim ~/Algs/svo2/src/rpg_svo_pro_open/svo_ros/param/calib/oivio_mono.yaml
+
+evo_ape tum \
+   /home/zyy/Datasets/plslam_oivio/TN_015_GV_01/trajout.txt \
+   /home/zyy/Datasets/svo2_oivio/TN_015_GV_01/TN_015_GV_01_svo2.txt \
+  --align --plot --correct_scale

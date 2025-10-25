@@ -1,0 +1,146 @@
+zyy@zyy:~$ gpg --generate-key
+gpg (GnuPG) 2.2.19; Copyright (C) 2019 Free Software Foundation, Inc.
+This is free software: you are free to change and redistribute it.
+There is NO WARRANTY, to the extent permitted by law.
+
+Note: Use "gpg --full-generate-key" for a full featured key generation dialogue.
+
+You need a user ID to identify your key; the software constructs the user ID
+from the Real Name, Comment and Email Address in this form:
+    "Heinrich Heine (Der Dichter) <heinrichh@duesseldorf.de>"
+
+Real name: ZHU Yueying
+E-mail address: 3157541528@qq.com
+You selected this USER-ID:
+    "ZHU Yueying <3157541528@qq.com>"
+
+Change (N)ame, (E)mail, or (O)kay/(Q)uit? O
+We need to generate a lot of random bytes. It is a good idea to perform
+some other action (type on the keyboard, move the mouse, utilise the
+disks) during the prime generation; this gives the random number
+generator a better chance to gain enough entropy.
+We need to generate a lot of random bytes. It is a good idea to perform
+some other action (type on the keyboard, move the mouse, utilise the
+disks) during the prime generation; this gives the random number
+generator a better chance to gain enough entropy.
+gpg: key 52CDDFA78E66F26A marked as ultimately trusted
+gpg: directory '/home/zyy/.gnupg/openpgp-revocs.d' created
+gpg: revocation certificate stored as '/home/zyy/.gnupg/openpgp-revocs.d/75C03A3FB00022856E9080EF52CDDFA78E66F26A.rev'
+public and secret key created and signed.
+
+pub   rsa3072 2025-03-27 [SC] [expires: 2027-03-27]
+      75C03A3FB00022856E9080EF52CDDFA78E66F26A
+uid                      ZHU Yueying <3157541528@qq.com>
+sub   rsa3072 2025-03-27 [E] [expires: 2027-03-27]
+
+
+
+把/Pangolin/src/CMakelist.txt里面的ffmpeg模块整个关掉以后 运行
+cd ~/Packages/Pangolin/build
+rm -rf *
+cmake .. -DCMAKE_INSTALL_PREFIX=$HOME/Packages/Pangolin/install
+make -j$(nproc)
+make install
+就可以创建成功了 
+这样就可以在include lib路径里面找到这两个文件了
+zyy@zyy:~/Packages/Pangolin/build$ ls ~/Packages/Pangolin/install/lib/libpangolin.so
+/home/zyy/Packages/Pangolin/install/lib/libpangolin.so
+zyy@zyy:~/Packages/Pangolin/build$ ls ~/Packages/Pangolin/install/include/pangolin/pangolin.h
+/home/zyy/Packages/Pangolin/install/include/pangolin/pangolin.h
+然后重新回去编译dso
+cd ~/dso/build
+rm -rf *
+cmake .. -DCMAKE_PREFIX_PATH=$HOME/Packages/Pangolin/install
+make -j4
+编译完成以后就可以运行dso_dataset这个binary
+bin/dso_dataset \
+	files=~/tumvi_data/sequence_01/images.zip \
+	calib=~/tumvi_data/sequence_01/camera.txt \
+	gamma=~/tumvi_data/sequence_01/pcalib.txt \
+	vignette=~/tumvi_data/sequence_01/vignette.png \
+	preset=0 \
+	mode=0
+这个是可以运行成功的 所以我们开始尝试跑一下oivio
+首先先搞清楚DSO可以兼容的格式 其实就是TUM_mono的格式 即
+sequence_01/
+├── camera.txt
+├── groundtruthSync.txt
+├── pcalib.txt
+├── statistics.txt
+├── times.txt
+├── vignette.png
+└── images.zip
+然后OIVIO的格式是
+TN_015_GV_01/
+├── cam0/
+│   ├── data/        # 图像
+│   ├── data.csv     # 时间戳
+│   ├── sensor.yaml  # 相机内参和T_BS外参
+│   ├── vignette.png
+│   └── response.txt
+├── cam1/ （结构一致）
+├── imu0/
+├── imu1/
+└── leica0/
+很明显这里是不考虑imu的 因为TUM_mono里面是没有的 而且仅用一个cam的输入数据，因为TUM_mono是单目的
+所以首先写了一个脚本来把TN_015_GV_01里的文件转换成dso兼容的tum格式
+python3 /home/zyy/Datasets/dso_oivio/convert_oivio_to_dso.py
+运行完了会生成
+TN_015_GV_01/
+├── camera.txt
+├── times.txt
+├── vignette.png
+└── images.zip
+然后这个时候运行
+cd ~/Algs/dso/build
+bin/dso_dataset \
+    files=~/Datasets/dso_oivio/TN_015_GV_01/images \
+    times=~/Datasets/dso_oivio/TN_015_GV_01/times.txt \
+    calib=~/Datasets/dso_oivio/TN_015_GV_01/camera.txt \
+    vignette=~/Datasets/dso_oivio/TN_015_GV_01/vignette.png \
+    mode=1 preset=0
+会有result.txt生成
+然后如果想用evo得到轨迹差的话，就要对原本/home/zyy/Datasets/oivio/TN_015_GV_01/leica0/data.csv和~/Algs/dso/build/bin/result.txt做转换 变成能兼容evo的格式
+所以一个脚本把两个文件转换一下
+python3 /home/zyy/Datasets/dso_oivio/convert_traj_to_tum.py
+这个会得到
+  /home/zyy/Datasets/dso_oivio/TN_015_GV_01/leica0_tum.txt 
+  /home/zyy/Datasets/dso_oivio/TN_015_GV_01/result_dso.txt 
+但是dso不能获得所有关键帧的，所以result_dso.txt不仅是只有514行数据 而且没有时间戳 这时候我就用两种办法去生成时间戳 好用evo计算轨迹
+均匀采样
+python3 /home/zyy/Datasets/dso_oivio/align_result_dso_with_timestamps.py
+得到/home/zyy/Datasets/dso_oivio/TN_015_GV_01/result_dso_tum.txt
+查值法
+python3 /home/zyy/Datasets/dso_oivio/interpolate_dso_to_timestamps.py
+得到/home/zyy/Datasets/dso_oivio/TN_015_GV_01/result_dso_tum_interp.txt
+然后分别给两组转换后能兼容evo的result_dso*.txt和leica真值计算轨迹rmse
+evo_ape tum \
+  ~/Datasets/dso_oivio/TN_015_GV_01/leica0_tum.txt \
+  ~/Datasets/dso_oivio/TN_015_GV_01/result_dso_tum.txt \
+  --align --correct_scale --plot
+得到结果
+       max	9.041050
+      mean	4.255252
+    median	3.772049
+       min	0.103811
+      rmse	4.761595
+       sse	11653.813504
+       std	2.136731
+evo_ape tum \
+  ~/Datasets/dso_oivio/TN_015_GV_01/leica0_tum.txt \
+  ~/Datasets/dso_oivio/TN_015_GV_01/result_dso_tum_interp.txt \
+  --align --correct_scale --plot
+得到结果
+      max	6.941320
+      mean	3.591807
+    median	3.419508
+       min	0.452986
+      rmse	3.896115
+       sse	1487.612110
+       std	1.509515
+查值法的误差稍微小一点 但也很大了 所以现在分析影响误差的因素：
+1. 生成的result_dso*.txt时间戳的方法；
+2. 之前只用了cam0的图片；
+3. 标定的数据比较少 可能影响精度；
+4. imu没有用上；
+但是目前好像是要用imu的话得装DSO_ros，就更复杂了，所以先放一放。

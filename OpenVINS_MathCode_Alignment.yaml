@@ -1,0 +1,427 @@
+# OpenVINS Math↔Code 对齐采集器输出
+# 基于源码分析的函数与类定位信息
+
+functions:
+  # VioManager核心函数
+  - name: "VioManager::feed_measurement_imu"
+    file: "ov_msckf/src/core/VioManager.cpp"
+    lines: "166:183"
+    signature: "void feed_measurement_imu(const ov_core::ImuData &message)"
+    inputs:
+      - name: "message"
+        type: "const ov_core::ImuData&"
+        description: "IMU测量数据，包含时间戳和惯性信息"
+    outputs:
+      - type: "void"
+        description: "无返回值，内部调用propagator和initializer"
+    brief: "IMU测量数据输入接口，传递给propagator进行状态传播"
+    notes: "修改state通过propagator->feed_imu，使用协方差传播，调用Φ/Q矩阵"
+    calls:
+      - "Propagator::feed_imu(message, oldest_time)"
+      - "InertialInitializer::feed_imu(message, oldest_time)"
+    used_by: "外部ROS节点调用"
+
+  - name: "VioManager::feed_measurement_camera"
+    file: "ov_msckf/src/core/VioManager.h"
+    lines: "81:81"
+    signature: "void feed_measurement_camera(const ov_core::CameraData &message)"
+    inputs:
+      - name: "message"
+        type: "const ov_core::CameraData&"
+        description: "相机测量数据，包含时间戳、图像和相机ID"
+    outputs:
+      - type: "void"
+        description: "内联调用track_image_and_update"
+    brief: "相机测量数据输入接口，直接调用图像跟踪和更新"
+    notes: "内联函数，直接调用track_image_and_update，修改state通过特征跟踪"
+    calls:
+      - "track_image_and_update(message)"
+    used_by: "外部ROS节点调用"
+
+  - name: "VioManager::track_image_and_update"
+    file: "ov_msckf/src/core/VioManager.cpp"
+    lines: "256:322"
+    signature: "void track_image_and_update(const ov_core::CameraData &message_const)"
+    inputs:
+      - name: "message_const"
+        type: "const ov_core::CameraData&"
+        description: "相机数据消息"
+    outputs:
+      - type: "void"
+        description: "执行特征跟踪和系统更新"
+    brief: "执行特征跟踪，然后调用do_feature_propagate_update进行状态更新"
+    notes: "修改state通过特征跟踪和状态更新，使用协方差更新，调用H/K矩阵"
+    calls:
+      - "trackFEATS->feed_new_camera(message)"
+      - "trackARUCO->feed_new_camera(message)"
+      - "do_feature_propagate_update(message)"
+    used_by: "VioManager::feed_measurement_camera"
+
+  - name: "VioManager::do_feature_propagate_update"
+    file: "ov_msckf/src/core/VioManager.cpp"
+    lines: "323:500"
+    signature: "void do_feature_propagate_update(const ov_core::CameraData &message)"
+    inputs:
+      - name: "message"
+        type: "const ov_core::CameraData&"
+        description: "相机数据消息"
+    outputs:
+      - type: "void"
+        description: "执行状态传播和特征更新"
+    brief: "执行状态传播、克隆增广和特征更新，是MSCKF的核心处理函数"
+    notes: "修改state通过propagate_and_clone和updater，使用Φ/Q/H/K矩阵"
+    calls:
+      - "Propagator::propagate_and_clone(state, message.timestamp)"
+      - "UpdaterMSCKF::update(state, feature_vec)"
+      - "UpdaterSLAM::update(state, feature_vec)"
+      - "UpdaterSLAM::delayed_init(state, feature_vec)"
+    used_by: "VioManager::track_image_and_update"
+
+  # Propagator函数
+  - name: "Propagator::feed_imu"
+    file: "ov_msckf/src/state/Propagator.h"
+    lines: "65:74"
+    signature: "void feed_imu(const ov_core::ImuData &message, double oldest_time = -1)"
+    inputs:
+      - name: "message"
+        type: "const ov_core::ImuData&"
+        description: "IMU测量数据"
+      - name: "oldest_time"
+        type: "double"
+        description: "可以丢弃测量的最旧时间"
+    outputs:
+      - type: "void"
+        description: "存储IMU测量数据并清理旧数据"
+    brief: "存储传入的IMU读数并清理旧的测量数据"
+    notes: "不直接修改state，仅管理IMU数据队列，使用互斥锁保护"
+    calls:
+      - "clean_old_imu_measurements(oldest_time - 0.10)"
+    used_by: "VioManager::feed_measurement_imu"
+
+  - name: "Propagator::propagate_and_clone"
+    file: "ov_msckf/src/state/Propagator.h"
+    lines: "110:110"
+    signature: "void propagate_and_clone(std::shared_ptr<State> state, double timestamp)"
+    inputs:
+      - name: "state"
+        type: "std::shared_ptr<State>"
+        description: "状态对象指针"
+      - name: "timestamp"
+        type: "double"
+        description: "传播目标时间戳"
+    outputs:
+      - type: "void"
+        description: "传播状态到指定时间并克隆"
+    brief: "将状态传播到给定时间戳并创建新的克隆状态"
+    notes: "修改state的协方差矩阵，使用Φ/Q矩阵进行状态传播"
+    calls:
+      - "StateHelper::augment_clone(state, last_w)"
+    used_by: "VioManager::do_feature_propagate_update"
+
+  # UpdaterMSCKF函数
+  - name: "UpdaterMSCKF::update"
+    file: "ov_msckf/src/update/UpdaterMSCKF.cpp"
+    lines: "58:200"
+    signature: "void update(std::shared_ptr<State> state, std::vector<std::shared_ptr<ov_core::Feature>> &feature_vec)"
+    inputs:
+      - name: "state"
+        type: "std::shared_ptr<State>"
+        description: "状态对象指针"
+      - name: "feature_vec"
+        type: "std::vector<std::shared_ptr<ov_core::Feature>>&"
+        description: "可用于更新的特征向量"
+    outputs:
+      - type: "void"
+        description: "执行MSCKF更新"
+    brief: "给定跟踪特征，尝试使用它们更新状态，实现MSCKF算法"
+    notes: "修改state的协方差矩阵，使用H/K矩阵进行卡尔曼更新"
+    calls:
+      - "FeatureInitializer::single_triangulation"
+      - "StateHelper::EKFUpdate"
+    used_by: "VioManager::do_feature_propagate_update"
+
+  # UpdaterSLAM函数
+  - name: "UpdaterSLAM::update"
+    file: "ov_msckf/src/update/UpdaterSLAM.h"
+    lines: "70:70"
+    signature: "void update(std::shared_ptr<State> state, std::vector<std::shared_ptr<ov_core::Feature>> &feature_vec)"
+    inputs:
+      - name: "state"
+        type: "std::shared_ptr<State>"
+        description: "状态对象指针"
+      - name: "feature_vec"
+        type: "std::vector<std::shared_ptr<ov_core::Feature>>&"
+        description: "可用于更新的SLAM特征向量"
+    outputs:
+      - type: "void"
+        description: "执行SLAM更新"
+    brief: "给定跟踪的SLAM特征，尝试使用它们更新状态"
+    notes: "修改state的协方差矩阵，使用H/K矩阵进行SLAM特征更新"
+    calls:
+      - "StateHelper::EKFUpdate"
+    used_by: "VioManager::do_feature_propagate_update"
+
+  - name: "UpdaterSLAM::delayed_init"
+    file: "ov_msckf/src/update/UpdaterSLAM.h"
+    lines: "77:77"
+    signature: "void delayed_init(std::shared_ptr<State> state, std::vector<std::shared_ptr<ov_core::Feature>> &feature_vec)"
+    inputs:
+      - name: "state"
+        type: "std::shared_ptr<State>"
+        description: "状态对象指针"
+      - name: "feature_vec"
+        type: "std::vector<std::shared_ptr<ov_core::Feature>>&"
+        description: "可用于初始化的特征向量"
+    outputs:
+      - type: "void"
+        description: "执行延迟初始化"
+    brief: "给定最大跟踪特征，尝试使用它们初始化状态中的特征"
+    notes: "修改state的协方差矩阵，添加新的SLAM特征到状态向量"
+    calls:
+      - "FeatureInitializer::single_triangulation"
+      - "StateHelper::augment_clone"
+    used_by: "VioManager::do_feature_propagate_update"
+
+  # StateHelper函数
+  - name: "StateHelper::augment_clone"
+    file: "ov_msckf/src/state/StateHelper.h"
+    lines: "213:213"
+    signature: "static void augment_clone(std::shared_ptr<State> state, Eigen::Matrix<double, 3, 1> last_w)"
+    inputs:
+      - name: "state"
+        type: "std::shared_ptr<State>"
+        description: "状态对象指针"
+      - name: "last_w"
+        type: "Eigen::Matrix<double, 3, 1>"
+        description: "最后的角速度"
+    outputs:
+      - type: "void"
+        description: "增广克隆状态"
+    brief: "向状态中增加新的克隆状态，用于滑动窗口管理"
+    notes: "修改state的协方差矩阵，扩展状态向量和协方差矩阵"
+    calls:
+      - "EKFPropagation"
+    used_by: "Propagator::propagate_and_clone"
+
+  - name: "StateHelper::marginalize_old_clone"
+    file: "ov_msckf/src/state/StateHelper.h"
+    lines: "224:224"
+    signature: "static void marginalize_old_clone(std::shared_ptr<State> state)"
+    inputs:
+      - name: "state"
+        type: "std::shared_ptr<State>"
+        description: "状态对象指针"
+    outputs:
+      - type: "void"
+        description: "边缘化最旧的克隆"
+    brief: "移除最旧的克隆，如果超过最大克隆数量则边缘化"
+    notes: "修改state的协方差矩阵，使用Schur补进行边缘化"
+    calls:
+      - "EKFPropagation"
+    used_by: "VioManager::do_feature_propagate_update"
+
+  # 发布函数
+  - name: "ROS1Visualizer::publish_state"
+    file: "ov_msckf/src/ros/ROS1Visualizer.cpp"
+    lines: "591:650"
+    signature: "void publish_state()"
+    inputs: []
+    outputs:
+      - type: "void"
+        description: "发布状态信息到ROS话题"
+    brief: "发布当前状态信息，包括位姿、速度和偏差"
+    notes: "不修改state，仅读取状态信息进行发布"
+    calls:
+      - "_app->get_state()"
+    used_by: "外部ROS系统调用"
+
+classes:
+  # 数据结构
+  - name: "ImuData"
+    file: "ov_core/src/utils/sensor_data.h"
+    lines: "34:47"
+    signature: "struct ImuData"
+    inputs: []
+    outputs: []
+    brief: "单个IMU测量数据结构"
+    notes: "包含时间戳、陀螺仪和加速度计读数"
+    calls: []
+    used_by: "VioManager::feed_measurement_imu"
+    structs:
+      - name: "timestamp"
+        type: "double"
+        purpose: "测量时间戳"
+        in_state_vector: false
+      - name: "wm"
+        type: "Eigen::Matrix<double, 3, 1>"
+        purpose: "陀螺仪读数，角速度(rad/s)"
+        in_state_vector: false
+      - name: "am"
+        type: "Eigen::Matrix<double, 3, 1>"
+        purpose: "加速度计读数，线性加速度(m/s^2)"
+        in_state_vector: false
+
+  - name: "CameraData"
+    file: "ov_core/src/utils/sensor_data.h"
+    lines: "55:79"
+    signature: "struct CameraData"
+    inputs: []
+    outputs: []
+    brief: "相机测量数据集合"
+    notes: "包含时间戳、相机ID、图像和掩码"
+    calls: []
+    used_by: "VioManager::feed_measurement_camera"
+    structs:
+      - name: "timestamp"
+        type: "double"
+        purpose: "测量时间戳"
+        in_state_vector: false
+      - name: "sensor_ids"
+        type: "std::vector<int>"
+        purpose: "每个图像的相机ID"
+        in_state_vector: false
+      - name: "images"
+        type: "std::vector<cv::Mat>"
+        purpose: "每个相机的原始图像"
+        in_state_vector: false
+      - name: "masks"
+        type: "std::vector<cv::Mat>"
+        purpose: "每个相机的跟踪掩码"
+        in_state_vector: false
+
+  - name: "State"
+    file: "ov_msckf/src/state/State.h"
+    lines: "49:200"
+    signature: "class State"
+    inputs: []
+    outputs: []
+    brief: "滤波器状态类，包含所有当前估计值"
+    notes: "基于MSCKF滤波器，包含滑动窗口克隆和协方差矩阵"
+    calls: []
+    used_by: "所有更新器和状态管理器"
+    structs:
+      - name: "_imu"
+        type: "std::shared_ptr<ov_type::IMU>"
+        purpose: "活跃的IMU状态(q_GtoI, p_IinG, v_IinG, bg, ba)"
+        in_state_vector: true
+      - name: "_clones_IMU"
+        type: "std::map<double, std::shared_ptr<ov_type::PoseJPL>>"
+        purpose: "克隆位姿映射(q_GtoIi, p_IiinG)"
+        in_state_vector: true
+      - name: "_cam_intrinsics"
+        type: "std::vector<std::shared_ptr<ov_type::Vec>>"
+        purpose: "相机内参"
+        in_state_vector: true
+      - name: "_calib_IMUtoCAM"
+        type: "std::vector<std::shared_ptr<ov_type::PoseJPL>>"
+        purpose: "IMU到相机的标定变换"
+        in_state_vector: true
+      - name: "_calib_dt_CAMtoIMU"
+        type: "std::shared_ptr<ov_type::Vec>"
+        purpose: "相机到IMU的时间延迟"
+        in_state_vector: true
+      - name: "_features_SLAM"
+        type: "std::vector<std::shared_ptr<ov_type::Landmark>>"
+        purpose: "SLAM特征点"
+        in_state_vector: true
+      - name: "_Cov"
+        type: "Eigen::MatrixXd"
+        purpose: "系统协方差矩阵"
+        in_state_vector: false
+
+  - name: "TrackKLT"
+    file: "ov_core/src/track/TrackKLT.h"
+    lines: "39:155"
+    signature: "class TrackKLT : public TrackBase"
+    inputs: []
+    outputs: []
+    brief: "KLT特征跟踪器，实现稀疏特征的KLT视觉前端"
+    notes: "使用OpenCV的calcOpticalFlowPyrLK函数进行KLT跟踪"
+    calls: []
+    used_by: "VioManager作为trackFEATS"
+    structs:
+      - name: "cameras"
+        type: "std::vector<std::shared_ptr<CamBase>>"
+        purpose: "相机标定对象"
+        in_state_vector: false
+      - name: "numfeats"
+        type: "int"
+        purpose: "要跟踪的特征数量"
+        in_state_vector: false
+      - name: "numaruco"
+        type: "int"
+        purpose: "ARUCO标签的最大ID"
+        in_state_vector: false
+      - name: "stereo"
+        type: "bool"
+        purpose: "是否进行立体特征跟踪"
+        in_state_vector: false
+
+  - name: "TrackDescriptor"
+    file: "ov_core/src/track/TrackDescriptor.h"
+    lines: "37:174"
+    signature: "class TrackDescriptor : public TrackBase"
+    inputs: []
+    outputs: []
+    brief: "基于描述符的视觉跟踪器，使用描述符匹配跟踪特征"
+    notes: "使用ORB描述符进行特征匹配，基于比率测试和RANSAC拒绝轨迹"
+    calls: []
+    used_by: "VioManager作为trackFEATS的替代"
+    structs:
+      - name: "cameras"
+        type: "std::vector<std::shared_ptr<CamBase>>"
+        purpose: "相机标定对象"
+        in_state_vector: false
+      - name: "numfeats"
+        type: "int"
+        purpose: "要跟踪的特征数量"
+        in_state_vector: false
+      - name: "numaruco"
+        type: "int"
+        purpose: "ARUCO标签的最大ID"
+        in_state_vector: false
+      - name: "stereo"
+        type: "bool"
+        purpose: "是否进行立体特征跟踪"
+        in_state_vector: false
+
+  - name: "TrackAruco"
+    file: "ov_core/src/track/TrackAruco.h"
+    lines: "43:128"
+    signature: "class TrackAruco : public TrackBase"
+    inputs: []
+    outputs: []
+    brief: "OpenCV ARUCO标签跟踪器"
+    notes: "跟踪标签的角点而不是标签的姿态，使用DICT_6X6_1000字典"
+    calls: []
+    used_by: "VioManager作为trackARUCO"
+    structs:
+      - name: "cameras"
+        type: "std::vector<std::shared_ptr<CamBase>>"
+        purpose: "相机标定对象"
+        in_state_vector: false
+      - name: "numaruco"
+        type: "int"
+        purpose: "ARUCO标签的最大ID"
+        in_state_vector: false
+      - name: "stereo"
+        type: "bool"
+        purpose: "是否进行立体特征跟踪"
+        in_state_vector: false
+
+# 关键数学符号说明
+math_symbols:
+  Φ: "状态转移矩阵，用于协方差传播"
+  Q: "过程噪声协方差矩阵，用于协方差传播"
+  H: "观测雅可比矩阵，用于卡尔曼更新"
+  K: "卡尔曼增益矩阵，用于状态更新"
+  R: "观测噪声协方差矩阵"
+  P: "状态协方差矩阵"
+
+# 数据流说明
+data_flow:
+  IMU_measurements: "ImuData -> Propagator::feed_imu -> 状态传播"
+  Camera_measurements: "CameraData -> TrackBase::feed_new_camera -> 特征跟踪"
+  State_propagation: "Propagator::propagate_and_clone -> StateHelper::augment_clone"
+  Feature_update: "UpdaterMSCKF::update / UpdaterSLAM::update -> StateHelper::EKFUpdate"
+  Marginalization: "StateHelper::marginalize_old_clone -> Schur补边缘化"

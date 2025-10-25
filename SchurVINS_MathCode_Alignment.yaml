@@ -1,0 +1,411 @@
+- name: "schur_vins::SchurVINS::Forward"
+  kind: function
+  file: "svo/src/schur_vins.cpp"
+  abs_file: "/home/zyy/Algs/schur/src/SchurVINS/svo/src/schur_vins.cpp"
+  lines: [665, 712]
+  decl_file: "svo/include/svo/schur_vins.h"
+  decl_lines: [42, 42]
+  signature: "void Forward(const svo::FrameBundle::Ptr frame_bundle)"
+  alias_of: "VioManager::feed_measurement_camera"
+  inputs:
+    - {name: "frame_bundle", type: "svo::FrameBundle::Ptr", note: "相机帧束"}
+  outputs:
+    return: "void"
+  brief: "前向处理相机测量，执行状态增强、预测和点注册"
+  notes:
+    - "修改 curr_state 和 states_map"
+    - "更新协方差矩阵 cov"
+    - "使用 FEJ 进行状态预测"
+    - "触发 AugmentState 和 RegisterPoints"
+  calls:
+    - {name: "schur_vins::SchurVINS::AugmentState", file: "svo/src/schur_vins.cpp", line: 97, role: "状态增强"}
+    - {name: "schur_vins::SchurVINS::Prediction", file: "svo/src/schur_vins.cpp", line: 157, role: "IMU预测"}
+    - {name: "schur_vins::SchurVINS::RegisterPoints", file: "svo/src/schur_vins.cpp", line: 589, role: "点注册"}
+  used_by:
+    - {name: "svo::FrameHandlerBase::schurvinsForward", file: "svo/src/frame_handler_base.cpp", line: 478}
+
+- name: "schur_vins::SchurVINS::Backward"
+  kind: function
+  file: "svo/src/schur_vins.cpp"
+  abs_file: "/home/zyy/Algs/schur/src/SchurVINS/svo/src/schur_vins.cpp"
+  lines: [713, 750]
+  decl_file: "svo/include/svo/schur_vins.h"
+  decl_lines: [43, 43]
+  signature: "int Backward(const svo::FrameBundle::Ptr frame_bundle)"
+  alias_of: "VioManager::do_feature_propagate_update"
+  inputs:
+    - {name: "frame_bundle", type: "svo::FrameBundle::Ptr", note: "相机帧束"}
+  outputs:
+    return: "int"
+    out_params:
+      - {name: "return", type: "int", reason: "返回移除的异常值数量"}
+  brief: "后向处理，移除异常值和点异常值"
+  notes:
+    - "修改 states_map 和 local_pts"
+    - "执行异常值检测和移除"
+    - "触发 RemoveOutliers 和 RemovePointOutliers"
+  calls:
+    - {name: "schur_vins::SchurVINS::RemoveOutliers", file: "svo/src/schur_vins.cpp", line: 82, role: "移除异常值"}
+    - {name: "schur_vins::SchurVINS::RemovePointOutliers", file: "svo/src/schur_vins.cpp", line: 83, role: "移除点异常值"}
+  used_by:
+    - {name: "svo::FrameHandlerBase::schurvinsBackward", file: "svo/src/frame_handler_base.cpp", line: 480}
+
+- name: "schur_vins::SchurVINS::Prediction"
+  kind: function
+  file: "svo/src/schur_vins.cpp"
+  abs_file: "/home/zyy/Algs/schur/src/SchurVINS/svo/src/schur_vins.cpp"
+  lines: [157, 212]
+  decl_file: "svo/include/svo/schur_vins.h"
+  decl_lines: [70, 70]
+  signature: "void Prediction(double _ts, const Eigen::Vector3d& _acc, const Eigen::Vector3d& _gyr)"
+  alias_of: "Propagator::propagate_and_clone"
+  inputs:
+    - {name: "_ts", type: "double", note: "时间戳"}
+    - {name: "_acc", type: "Eigen::Vector3d", note: "加速度测量"}
+    - {name: "_gyr", type: "Eigen::Vector3d", note: "角速度测量"}
+  outputs:
+    return: "void"
+  brief: "IMU状态预测，构建传播矩阵和协方差"
+  notes:
+    - "修改 curr_state 的 quat, pos, vel, ba, bg"
+    - "更新协方差矩阵 cov"
+    - "使用 FEJ 进行预测"
+    - "构建传播矩阵 Φ 和噪声矩阵 Q"
+  calls:
+    - {name: "schur_vins::SchurVINS::PredictionState", file: "svo/src/schur_vins.cpp", line: 120, role: "状态预测"}
+  used_by:
+    - {name: "schur_vins::SchurVINS::Forward", file: "svo/src/schur_vins.cpp", line: 665}
+
+- name: "schur_vins::SchurVINS::AugmentState"
+  kind: function
+  file: "svo/src/schur_vins.cpp"
+  abs_file: "/home/zyy/Algs/schur/src/SchurVINS/svo/src/schur_vins.cpp"
+  lines: [97, 119]
+  decl_file: "svo/include/svo/schur_vins.h"
+  decl_lines: [68, 68]
+  signature: "void AugmentState(const svo::FrameBundle::Ptr frame_bundle)"
+  alias_of: "StateHelper::augment_clone"
+  inputs:
+    - {name: "frame_bundle", type: "svo::FrameBundle::Ptr", note: "相机帧束"}
+  outputs:
+    return: "void"
+  brief: "状态增强，将当前状态添加到滑窗中"
+  notes:
+    - "修改 states_map"
+    - "更新协方差矩阵 cov"
+    - "创建新的 AugState"
+    - "执行协方差扩展"
+  calls:
+    - {name: "svo::AugState::AugState", file: "svo_common/include/svo/common/local_feature.h", line: 62, role: "创建增强状态"}
+  used_by:
+    - {name: "schur_vins::SchurVINS::Forward", file: "svo/src/schur_vins.cpp", line: 665}
+
+- name: "schur_vins::SchurVINS::RegisterPoints"
+  kind: function
+  file: "svo/src/schur_vins.cpp"
+  abs_file: "/home/zyy/Algs/schur/src/SchurVINS/svo/src/schur_vins.cpp"
+  lines: [589, 664]
+  decl_file: "svo/include/svo/schur_vins.h"
+  decl_lines: [79, 79]
+  signature: "void RegisterPoints(const svo::FrameBundle::Ptr& frame_bundle)"
+  alias_of: "UpdaterSLAM::update"
+  inputs:
+    - {name: "frame_bundle", type: "svo::FrameBundle::Ptr", note: "相机帧束"}
+  outputs:
+    return: "void"
+  brief: "注册3D点到状态中，创建局部特征"
+  notes:
+    - "修改 local_pts 和 states_map"
+    - "创建 LocalFeature 对象"
+    - "建立点与状态的关联"
+    - "计算雅可比矩阵 W"
+  calls:
+    - {name: "svo::LocalFeature::LocalFeature", file: "svo_common/include/svo/common/local_feature.h", line: 30, role: "创建局部特征"}
+  used_by:
+    - {name: "schur_vins::SchurVINS::Forward", file: "svo/src/schur_vins.cpp", line: 665}
+
+- name: "schur_vins::SchurVINS::Solve3"
+  kind: function
+  file: "svo/src/schur_vins.cpp"
+  abs_file: "/home/zyy/Algs/schur/src/SchurVINS/svo/src/schur_vins.cpp"
+  lines: [213, 423]
+  decl_file: "svo/include/svo/schur_vins.h"
+  decl_lines: [81, 81]
+  signature: "void Solve3()"
+  alias_of: "UpdaterMSCKF::update"
+  inputs: []
+  outputs:
+    return: "void"
+  brief: "求解3D点位置，执行MSCKF更新"
+  notes:
+    - "修改 states_map 和 local_pts"
+    - "构建海塞矩阵 H_xx 和 H_ff"
+    - "执行 Schur 补和 QR 压缩"
+    - "使用 EKF 更新状态"
+  calls:
+    - {name: "schur_vins::SchurVINS::StateUpdate", file: "svo/src/schur_vins.cpp", line: 424, role: "状态更新"}
+  used_by:
+    - {name: "schur_vins::SchurVINS::Forward", file: "svo/src/schur_vins.cpp", line: 665}
+
+- name: "schur_vins::SchurVINS::StateUpdate"
+  kind: function
+  file: "svo/src/schur_vins.cpp"
+  abs_file: "/home/zyy/Algs/schur/src/SchurVINS/svo/src/schur_vins.cpp"
+  lines: [424, 451]
+  decl_file: "svo/include/svo/schur_vins.h"
+  decl_lines: [74, 74]
+  signature: "void StateUpdate(const Eigen::MatrixXd& hessian, const Eigen::VectorXd& gradient)"
+  inputs:
+    - {name: "hessian", type: "Eigen::MatrixXd", note: "海塞矩阵"}
+    - {name: "gradient", type: "Eigen::VectorXd", note: "梯度向量"}
+  outputs:
+    return: "void"
+  brief: "EKF状态更新，使用Joseph形式"
+  notes:
+    - "修改 curr_state 和 states_map"
+    - "更新协方差矩阵 cov"
+    - "使用左乘四元数更新"
+    - "执行 Joseph 形式协方差更新"
+  calls:
+    - {name: "schur_vins::SchurVINS::StateCorrection", file: "svo/src/schur_vins.cpp", line: 452, role: "状态校正"}
+  used_by:
+    - {name: "schur_vins::SchurVINS::Solve3", file: "svo/src/schur_vins.cpp", line: 213}
+
+- name: "svo::ceres_backend::Estimator::applyMarginalizationStrategy"
+  kind: function
+  file: "svo_ceres_backend/src/estimator.cpp"
+  abs_file: "/home/zyy/Algs/schur/src/SchurVINS/svo_ceres_backend/src/estimator.cpp"
+  lines: [632, 700]
+  decl_file: "svo_ceres_backend/include/svo/ceres_backend/estimator.hpp"
+  decl_lines: [263, 264]
+  signature: "bool applyMarginalizationStrategy(size_t num_keyframes, size_t num_imu_frames, MarginalizationTiming* timing)"
+  alias_of: "StateHelper::marginalize_old_clone"
+  inputs:
+    - {name: "num_keyframes", type: "size_t", note: "关键帧数量"}
+    - {name: "num_imu_frames", type: "size_t", note: "IMU帧数量"}
+    - {name: "timing", type: "MarginalizationTiming*", note: "时间统计"}
+  outputs:
+    return: "bool"
+  brief: "应用边缘化策略，移除旧状态"
+  notes:
+    - "修改 states_ 和 landmarks_map_"
+    - "更新 marginalization_error_ptr_"
+    - "执行 Schur 补边缘化"
+    - "触发 marginalizeOut"
+  calls:
+    - {name: "svo::ceres_backend::MarginalizationError::marginalizeOut", file: "svo_ceres_backend/include/svo/ceres_backend/marginalization_error.hpp", line: 129, role: "边缘化"}
+  used_by:
+    - {name: "svo::ceres_backend::CeresBackendInterface::applyMarginalizationStrategy", file: "svo_ceres_backend/src/ceres_backend_interface.cpp", line: 200}
+
+- name: "svo::ceres_backend::MarginalizationError::marginalizeOut"
+  kind: function
+  file: "svo_ceres_backend/src/marginalization_error.cpp"
+  abs_file: "/home/zyy/Algs/schur/src/SchurVINS/svo_ceres_backend/src/marginalization_error.cpp"
+  lines: [200, 300]
+  decl_file: "svo_ceres_backend/include/svo/ceres_backend/marginalization_error.hpp"
+  decl_lines: [129, 131]
+  signature: "bool marginalizeOut(const std::vector<uint64_t>& parameter_block_ids, const std::vector<bool>& keep_parameter_blocks)"
+  inputs:
+    - {name: "parameter_block_ids", type: "std::vector<uint64_t>", note: "要边缘化的参数块ID"}
+    - {name: "keep_parameter_blocks", type: "std::vector<bool>", note: "保留的参数块标志"}
+  outputs:
+    return: "bool"
+  brief: "边缘化参数块，执行Schur补"
+  notes:
+    - "修改 H_, b0_, e0_, J_"
+    - "执行 Schur 补操作"
+    - "使用伪逆和QR压缩"
+    - "更新误差计算"
+  calls:
+    - {name: "svo::ceres_backend::MarginalizationError::pseudoInverseSymmSqrt", file: "svo_ceres_backend/src/marginalization_error.cpp", line: 740, role: "伪逆计算"}
+  used_by:
+    - {name: "svo::ceres_backend::Estimator::applyMarginalizationStrategy", file: "svo_ceres_backend/src/estimator.cpp", line: 632}
+
+- name: "schur_vins::SchurVINS::Management"
+  kind: function
+  file: "svo/src/schur_vins.cpp"
+  abs_file: "/home/zyy/Algs/schur/src/SchurVINS/svo/src/schur_vins.cpp"
+  lines: [485, 588]
+  decl_file: "svo/include/svo/schur_vins.h"
+  decl_lines: [71, 71]
+  signature: "void Management(int index)"
+  inputs:
+    - {name: "index", type: "int", note: "要移除的状态索引"}
+  outputs:
+    return: "void"
+  brief: "状态管理，移除旧状态并更新协方差"
+  notes:
+    - "修改 states_map 和 cov"
+    - "执行协方差重分块"
+    - "压缩协方差矩阵"
+    - "管理滑窗大小"
+  calls: []
+  used_by:
+    - {name: "schur_vins::SchurVINS::Forward", file: "svo/src/schur_vins.cpp", line: 665}
+
+- name: "svo::CeresBackendPublisher::publish"
+  kind: function
+  file: "svo_ceres_backend/src/ceres_backend_publisher.cpp"
+  abs_file: "/home/zyy/Algs/schur/src/SchurVINS/svo_ceres_backend/src/ceres_backend_publisher.cpp"
+  lines: [43, 49]
+  decl_file: "svo_ceres_backend/include/svo/ceres_backend_publisher.hpp"
+  decl_lines: [30, 30]
+  signature: "void publish(const ViNodeState& state, const int64_t timestamp, const int32_t seq)"
+  alias_of: "publish_odometry"
+  inputs:
+    - {name: "state", type: "ViNodeState", note: "VIO节点状态"}
+    - {name: "timestamp", type: "int64_t", note: "时间戳"}
+    - {name: "seq", type: "int32_t", note: "序列号"}
+  outputs:
+    return: "void"
+  brief: "发布里程计信息，包括位姿、速度和协方差"
+  notes:
+    - "发布 IMU 位姿和协方差"
+    - "发布后端地标点"
+    - "输出世界坐标系下的状态"
+  calls:
+    - {name: "svo::CeresBackendPublisher::publishImuPose", file: "svo_ceres_backend/src/ceres_backend_publisher.cpp", line: 50, role: "发布IMU位姿"}
+  used_by:
+    - {name: "svo::ceres_backend::CeresBackendInterface::publish", file: "svo_ceres_backend/src/ceres_backend_interface.cpp", line: 150}
+
+- name: "svo::ImuMeasurement"
+  kind: struct
+  file: "svo_common/include/svo/common/imu_calibration.h"
+  abs_file: "/home/zyy/Algs/schur/src/SchurVINS/svo_common/include/svo/common/imu_calibration.h"
+  lines: [112, 127]
+  signature: "struct ImuMeasurement"
+  alias_of: "ImuData"
+  brief: "IMU测量数据结构"
+  structs:
+    - {field: "timestamp_", type: "double", purpose: "时间戳(秒)"}
+    - {field: "angular_velocity_", type: "Eigen::Vector3d", purpose: "角速度测量"}
+    - {field: "linear_acceleration_", type: "Eigen::Vector3d", purpose: "线性加速度测量"}
+
+- name: "svo::FrameBundle"
+  kind: class
+  file: "svo_common/include/svo/common/frame.h"
+  abs_file: "/home/zyy/Algs/schur/src/SchurVINS/svo_common/include/svo/common/frame.h"
+  lines: [200, 250]
+  signature: "class FrameBundle"
+  alias_of: "CameraData"
+  brief: "相机帧束，包含多相机图像数据"
+  structs:
+    - {field: "frames_", type: "std::vector<FramePtr>", purpose: "帧向量"}
+    - {field: "imu_measurements_", type: "ImuMeasurements", purpose: "IMU测量数据"}
+    - {field: "timestamp_", type: "double", purpose: "时间戳"}
+
+- name: "schur_vins::SchurVINS::ImuState"
+  kind: class
+  file: "svo/include/svo/schur_vins.h"
+  abs_file: "/home/zyy/Algs/schur/src/SchurVINS/svo/include/svo/schur_vins.h"
+  lines: [47, 65]
+  signature: "class ImuState"
+  alias_of: "State::imu"
+  brief: "IMU状态，包含姿态、位置、速度和偏置"
+  structs:
+    - {field: "quat", type: "Eigen::Quaterniond", purpose: "四元数姿态"}
+    - {field: "pos", type: "Eigen::Vector3d", purpose: "位置向量"}
+    - {field: "vel", type: "Eigen::Vector3d", purpose: "速度向量"}
+    - {field: "ba", type: "Eigen::Vector3d", purpose: "加速度计偏置"}
+    - {field: "bg", type: "Eigen::Vector3d", purpose: "陀螺仪偏置"}
+    - {field: "quat_fej", type: "Eigen::Quaterniond", purpose: "FEJ四元数"}
+    - {field: "pos_fej", type: "Eigen::Vector3d", purpose: "FEJ位置"}
+    - {field: "vel_fej", type: "Eigen::Vector3d", purpose: "FEJ速度"}
+    - {field: "ts", type: "double", purpose: "时间戳"}
+    - {field: "id", type: "int64_t", purpose: "状态ID"}
+
+- name: "svo::AugState"
+  kind: class
+  file: "svo_common/include/svo/common/local_feature.h"
+  abs_file: "/home/zyy/Algs/schur/src/SchurVINS/svo_common/include/svo/common/local_feature.h"
+  lines: [57, 84]
+  signature: "class AugState"
+  alias_of: "State::clones_IMU"
+  brief: "增强状态，滑窗中的状态克隆"
+  structs:
+    - {field: "ts", type: "double", purpose: "时间戳"}
+    - {field: "id", type: "int64_t", purpose: "状态ID"}
+    - {field: "index", type: "int", purpose: "索引"}
+    - {field: "frame_bundle", type: "FrameBundlePtr", purpose: "帧束指针"}
+    - {field: "quat", type: "Eigen::Quaterniond", purpose: "四元数姿态"}
+    - {field: "rot", type: "Eigen::Matrix3d", purpose: "旋转矩阵"}
+    - {field: "pos", type: "Eigen::Vector3d", purpose: "位置向量"}
+    - {field: "acc", type: "Eigen::Vector3d", purpose: "加速度"}
+    - {field: "gyr", type: "Eigen::Vector3d", purpose: "角速度"}
+    - {field: "quat_fej", type: "Eigen::Quaterniond", purpose: "FEJ四元数"}
+    - {field: "pos_fej", type: "Eigen::Vector3d", purpose: "FEJ位置"}
+    - {field: "features", type: "std::list<LocalFeaturePtr>", purpose: "局部特征列表"}
+
+- name: "svo::StateMap"
+  kind: struct
+  file: "svo_common/include/svo/common/types.h"
+  abs_file: "/home/zyy/Algs/schur/src/SchurVINS/svo_common/include/svo/common/types.h"
+  lines: [71, 71]
+  signature: "using StateMap = std::map<int64_t, svo::AugStatePtr>"
+  alias_of: "State::clones_IMU"
+  brief: "状态映射表，键为状态ID，值为增强状态指针"
+  structs:
+    - {field: "key", type: "int64_t", purpose: "状态ID"}
+    - {field: "value", type: "svo::AugStatePtr", purpose: "增强状态指针"}
+
+- name: "svo::FeatureTracker"
+  kind: class
+  file: "svo_tracker/include/svo/tracker/feature_tracker.h"
+  abs_file: "/home/zyy/Algs/schur/src/SchurVINS/svo_tracker/include/svo/tracker/feature_tracker.h"
+  lines: [14, 73]
+  signature: "class FeatureTracker"
+  alias_of: "TrackKLT"
+  brief: "特征跟踪器，执行KLT跟踪和特征检测"
+  structs:
+    - {field: "options_", type: "FeatureTrackerOptions", purpose: "跟踪器选项"}
+    - {field: "detector_options_", type: "DetectorOptions", purpose: "检测器选项"}
+    - {field: "cams_", type: "CameraBundlePtr", purpose: "相机束指针"}
+    - {field: "feature_tracks_", type: "std::vector<FeatureTracks>", purpose: "特征轨迹"}
+    - {field: "detector_", type: "AbstractDetectorPtr", purpose: "特征检测器"}
+
+- name: "svo::ImuHandler::addImuMeasurement"
+  kind: function
+  file: "svo/src/imu_handler.cpp"
+  abs_file: "/home/zyy/Algs/schur/src/SchurVINS/svo/src/imu_handler.cpp"
+  lines: [50, 80]
+  decl_file: "svo/include/svo/imu_handler.h"
+  decl_lines: [160, 160]
+  signature: "bool addImuMeasurement(const ImuMeasurement& measurement)"
+  alias_of: "Propagator::feed_imu"
+  inputs:
+    - {name: "measurement", type: "ImuMeasurement", note: "IMU测量数据"}
+  outputs:
+    return: "bool"
+  brief: "添加IMU测量到缓冲区"
+  notes:
+    - "修改 measurements_ 缓冲区"
+    - "时间戳对齐和排序"
+    - "触发预积分计算"
+  calls: []
+  used_by:
+    - {name: "svo_ros::SvoInterface::addImuMeasurement", file: "svo_ros/src/svo_interface.cpp", line: 409}
+
+- name: "svo::FrameHandlerBase::addFrameBundle"
+  kind: function
+  file: "svo/src/frame_handler_base.cpp"
+  abs_file: "/home/zyy/Algs/schur/src/SchurVINS/svo/src/frame_handler_base.cpp"
+  lines: [253, 300]
+  decl_file: "svo/include/svo/frame_handler_base.h"
+  decl_lines: [290, 290]
+  signature: "bool addFrameBundle(const FrameBundlePtr& frame_bundle)"
+  alias_of: "VioManager::feed_measurement_camera"
+  inputs:
+    - {name: "frame_bundle", type: "FrameBundlePtr", note: "相机帧束"}
+  outputs:
+    return: "bool"
+  brief: "添加相机帧束，执行前端处理"
+  notes:
+    - "修改 new_frames_ 和 last_frames_"
+    - "触发前端处理管线"
+    - "调用 SchurVINS 处理"
+  calls:
+    - {name: "svo::FrameHandlerBase::processFrameBundle", file: "svo/src/frame_handler_base.cpp", line: 503, role: "处理帧束"}
+  used_by:
+    - {name: "svo::FrameHandlerBase::addImageBundle", file: "svo/src/frame_handler_base.cpp", line: 211}
+
+

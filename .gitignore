@@ -1,0 +1,67 @@
+# 构建目录
+build/
+devel/
+install/
+log/
+logs/
+
+# 编译生成的文件
+*.o
+*.so
+*.a
+*.cmake
+*.make
+*.internal
+
+# 数据文件
+*.bag
+*.bin
+*.cereal
+*.png
+*.jpg
+*.jpeg
+*.pdf
+*.zip
+
+# 结果文件
+results/
+Results_*/
+*_results/
+
+# 临时文件
+*.tmp
+*.temp
+*.log
+*.stderr
+
+# IDE文件
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 系统文件
+.DS_Store
+Thumbs.db
+
+# 大文件（如果使用Git LFS）
+*.bin
+*.bag
+
+# 子项目Git仓库（这些应该作为子模块处理）
+# 暂时忽略这些目录，避免嵌入Git仓库的问题
+DM_VIO/
+OpenVINS/
+VINS-Fusion/
+airslam/
+basalt/
+dso/
+kimera/
+msckf/
+orb3/
+orbslam3/
+plslam/
+schur/
+svo2/
+vins/

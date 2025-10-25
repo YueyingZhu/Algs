@@ -1,0 +1,123 @@
+sudo docker pull xukuanhit/air_slam:v4
+sudo docker run -it \
+	--env DISPLAY=$DISPLAY \
+	--volume /tmp/.X11-unix:/tmp/.X11-unix \
+	--privileged \
+	--runtime nvidia \
+	--gpus all \
+	--volume /home/zyy/Algs/airslam:/airslam \
+	--volume /home/zyy/Datasets/oivio:/oivio \
+	--workdir /ws \
+	--name air_slam xukuanhit/air_slam:v4 /bin/bash
+mkdir -p /ws/src
+cd /ws/src
+git clone https://github.com/sair-lab/AirSLAM.git
+cd /ws
+catkin_make
+source devel/setup.bash
+
+xhost +local:
+
+ls -la /ws
+ls -la ./air_slam
+
+sudo docker stop air_slam
+sudo docker start air_slam
+sudo docker exec -it air_slam /bin/bash
+
+trtexec --onnx=/airslam/src/AirSLAM/output/plnet_s1.onnx \
+        --saveEngine=/airslam/src/AirSLAM/output/plnet_s1.engine \
+        --fp16 --verbose \
+        --optShapes=juncs_pred:128x2,lines_pred:128x4,idx_lines_for_junctions:128x2,inverse:128x1,iskeep_index:128x1,loi_features:1x256x256x256,loi_features_thin:1x4x256x256,loi_features_aux:1x4x256x256 \
+        --minShapes=juncs_pred:1x2,lines_pred:1x4,idx_lines_for_junctions:1x2,inverse:1x1,iskeep_index:1x1,loi_features:1x32x32x32,loi_features_thin:1x4x32x32,loi_features_aux:1x4x32x32 \
+        --maxShapes=juncs_pred:512x2,lines_pred:512x4,idx_lines_for_junctions:512x2,inverse:512x1,iskeep_index:512x1,loi_features:1x512x512x512,loi_features_thin:1x4x512x512,loi_features_aux:1x4x512x512
+        
+ trtexec --onnx=/airslam/src/AirSLAM/output/plnet_s0.onnx \
+        --saveEngine=/airslam/src/AirSLAM/output/plnet_s0.engine \
+        --fp16 --verbose \
+        --optShapes=input:1x1x256x256 \
+        --minShapes=input:1x1x256x256 \
+        --maxShapes=input:1x1x256x256       
+/usr/src/tensorrt/bin/trtexec --onnx=/airslam/src/AirSLAM/output/superpoint_lightglue.onnx \
+        --saveEngine=/airslam/src/AirSLAM/output/superpoint_lightglue.engine \
+        --fp16
+        
+/usr/src/tensorrt/bin/trtexec --onnx=/airslam/src/AirSLAM/output/superpoint_v1_sim_int32.onnx \
+                              --saveEngine=/airslam/src/AirSLAM/output/superpoint_v1_sim_int32.engine \
+                              --fp16
+/usr/src/tensorrt/bin/trtexec --onnx=/airslam/src/AirSLAM/output/superglue_indoor_sim_int32.onnx \
+                              --saveEngine=/airslam/src/AirSLAM/output/superglue_indoor_sim_int32.engine \
+                              --fp16
+/usr/src/tensorrt/bin/trtexec --onnx=/airslam/src/AirSLAM/output/superglue_outdoor_sim_int32.onnx \
+                              --saveEngine=/airslam/src/AirSLAM/output/superglue_outdoor_sim_int32.engine \
+                              --fp16
+                              
+be2f50cfd5a7
+sudo docker cp be2f50cfd5a7:/root/.ros/log ~/airslam/log
+rosclean check  # 查看可以清理的空间
+rosclean purge  # 删除所有 ROS 日志
+
+
+roslaunch air_slam vo_euroc.launch 
+roslaunch air_slam vo_oivio.launch 
+
+roslaunch air_slam mr_euroc.launch 
+roslaunch air_slam mr_oivio.launch
+
+
+for f in /airslam/src/AirSLAM/output/*.onnx; do
+    trtexec --onnx=$f \
+    	    --saveEngine=${f%.onnx}.engine 
+    	    --fp16  \
+    	    --optShapes=input:1x1x256x256 \
+            --minShapes=input:1x1x256x256 \
+            --maxShapes=input:1x1x256x256
+done
+
+        
+sudo apt update
+sudo apt install nano -y
+
+
+
+/usr/src/tensorrt/bin/trtexec --onnx=/airslam/src/AirSLAM/output/plnet_s0.onnx \
+        --saveEngine=/airslam/src/AirSLAM/output/plnet_s0.engine \
+        --fp16 --verbose --explicitBatch \
+        --optShapes=input:1x1x480x752 \
+        --minShapes=input:1x1x240x376 \
+        --maxShapes=input:1x1x960x1504
+/usr/src/tensorrt/bin/trtexec \
+    --onnx=/airslam/src/AirSLAM/output/plnet_s0.onnx \
+    --saveEngine=/airslam/src/AirSLAM/output/plnet_s0.engine \
+    --fp16 --verbose --explicitBatch \
+    --optShapes=input:1x1x512x512 \
+    --minShapes=input:1x1x100x100 \
+    --maxShapes=input:1x1x1500x1500
+
+/usr/src/tensorrt/bin/trtexec \
+    --onnx=/airslam/src/AirSLAM/output/plnet_s1.onnx \
+    --saveEngine=/airslam/src/AirSLAM/output/plnet_s1.engine \
+    --fp16 --verbose \
+    --optShapes=juncs_pred:250x2,lines_pred:20000x4,idx_lines_for_junctions:20000x2,inverse:20000x1,iskeep_index:20000x1,loi_features:1x128x128x128,loi_features_thin:1x4x128x128,loi_features_aux:1x4x128x128 \
+    --minShapes=juncs_pred:1x2,lines_pred:1x4,idx_lines_for_junctions:1x2,inverse:1x1,iskeep_index:1x1,loi_features:1x16x16x16,loi_features_thin:1x4x16x16,loi_features_aux:1x4x16x16 \
+    --maxShapes=juncs_pred:500x2,lines_pred:50000x4,idx_lines_for_junctions:50000x2,inverse:50000x1,iskeep_index:50000x1,loi_features:1x512x512x512,loi_features_thin:1x4x512x512,loi_features_aux:1x4x512x512
+
+/usr/src/tensorrt/bin/trtexec \
+    --onnx=/airslam/src/AirSLAM/output/plnet_s1.onnx \
+    --saveEngine=/airslam/src/AirSLAM/output/plnet_s1.engine \
+    --fp16 --verbose \
+    --optShapes=juncs_pred:250x2,lines_pred:20000x4,idx_lines_for_junctions:20000x2,inverse:20000x1,iskeep_index:20000x1,loi_features:1x128x128x128,loi_features_thin:1x4x128x128,loi_features_aux:1x4x128x128 \
+    --minShapes=juncs_pred:250x2,lines_pred:20000x4,idx_lines_for_junctions:20000x2,inverse:20000x1,iskeep_index:20000x1,loi_features:1x128x128x128,loi_features_thin:1x4x128x128,loi_features_aux:1x4x128x128 \
+    --maxShapes=juncs_pred:250x2,lines_pred:20000x4,idx_lines_for_junctions:20000x2,inverse:20000x1,iskeep_index:20000x1,loi_features:1x128x128x128,loi_features_thin:1x4x128x128,loi_features_aux:1x4x128x128
+
+python -c "import onnx; model = onnx.load('/airslam/src/AirSLAM/output/plnet_s1.onnx'); print(model.graph.input)"
+
+/usr/src/tensorrt/bin/trtexec \
+    --onnx=/airslam/src/AirSLAM/output/plnet_s1.onnx \
+    --saveEngine=/airslam/src/AirSLAM/output/plnet_s1.engine \
+    --fp16 --verbose \
+    --optShapes=juncs_pred:250x2,lines_pred:20000x4,idx_lines_for_junctions:20000x2,inverse:20000x1,iskeep_index:20000x1,loi_features:1x128x128x128,loi_features_thin:1x4x128x128,loi_features_aux:1x4x128x128 \
+    --minShapes=juncs_pred:1x2,lines_pred:1x4,idx_lines_for_junctions:1x2,inverse:1x1,iskeep_index:1x1,loi_features:1x16x16x16,loi_features_thin:1x4x16x16,loi_features_aux:1x4x16x16 \
+    --maxShapes=juncs_pred:500x2,lines_pred:50000x4,idx_lines_for_junctions:50000x2,inverse:50000x1,iskeep_index:50000x1,loi_features:1x512x512x512,loi_features_thin:1x4x512x512,loi_features_aux:1x4x512x512
+
+
