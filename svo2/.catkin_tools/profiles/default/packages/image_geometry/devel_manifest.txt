@@ -1,0 +1,6 @@
+vision_opencv/image_geometry
+/ws/devel/.private/image_geometry/share/image_geometry/cmake/image_geometryConfig-version.cmake /ws/devel/share/image_geometry/cmake/image_geometryConfig-version.cmake
+/ws/devel/.private/image_geometry/share/image_geometry/cmake/image_geometryConfig.cmake /ws/devel/share/image_geometry/cmake/image_geometryConfig.cmake
+/ws/devel/.private/image_geometry/lib/libimage_geometry.so /ws/devel/lib/libimage_geometry.so
+/ws/devel/.private/image_geometry/lib/python3/dist-packages/image_geometry/__init__.py /ws/devel/lib/python3/dist-packages/image_geometry/__init__.py
+/ws/devel/.private/image_geometry/lib/pkgconfig/image_geometry.pc /ws/devel/lib/pkgconfig/image_geometry.pc

@@ -1,0 +1,5 @@
+SchurVINS/svo_img_align
+/ws/devel/.private/svo_img_align/share/svo_img_align/cmake/svo_img_alignConfig.cmake /ws/devel/share/svo_img_align/cmake/svo_img_alignConfig.cmake
+/ws/devel/.private/svo_img_align/share/svo_img_align/cmake/svo_img_alignConfig-version.cmake /ws/devel/share/svo_img_align/cmake/svo_img_alignConfig-version.cmake
+/ws/devel/.private/svo_img_align/lib/libsvo_img_align.so /ws/devel/lib/libsvo_img_align.so
+/ws/devel/.private/svo_img_align/lib/pkgconfig/svo_img_align.pc /ws/devel/lib/pkgconfig/svo_img_align.pc

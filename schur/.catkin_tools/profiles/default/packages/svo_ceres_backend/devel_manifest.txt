@@ -1,0 +1,5 @@
+SchurVINS/svo_ceres_backend
+/ws/devel/.private/svo_ceres_backend/share/svo_ceres_backend/cmake/svo_ceres_backendConfig.cmake /ws/devel/share/svo_ceres_backend/cmake/svo_ceres_backendConfig.cmake
+/ws/devel/.private/svo_ceres_backend/share/svo_ceres_backend/cmake/svo_ceres_backendConfig-version.cmake /ws/devel/share/svo_ceres_backend/cmake/svo_ceres_backendConfig-version.cmake
+/ws/devel/.private/svo_ceres_backend/lib/libsvo_ceres_backend.so /ws/devel/lib/libsvo_ceres_backend.so
+/ws/devel/.private/svo_ceres_backend/lib/pkgconfig/svo_ceres_backend.pc /ws/devel/lib/pkgconfig/svo_ceres_backend.pc

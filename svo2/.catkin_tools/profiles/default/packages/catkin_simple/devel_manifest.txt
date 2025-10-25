@@ -1,0 +1,5 @@
+catkin_simple
+/ws/devel/.private/catkin_simple/share/catkin_simple/cmake/catkin_simpleConfig-version.cmake /ws/devel/share/catkin_simple/cmake/catkin_simpleConfig-version.cmake
+/ws/devel/.private/catkin_simple/share/catkin_simple/cmake/catkin_simpleConfig.cmake /ws/devel/share/catkin_simple/cmake/catkin_simpleConfig.cmake
+/ws/devel/.private/catkin_simple/share/catkin_simple/cmake/catkin_simple-extras.cmake /ws/devel/share/catkin_simple/cmake/catkin_simple-extras.cmake
+/ws/devel/.private/catkin_simple/lib/pkgconfig/catkin_simple.pc /ws/devel/lib/pkgconfig/catkin_simple.pc

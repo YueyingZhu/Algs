@@ -1,0 +1,20 @@
+dbow2_catkin
+/ws/devel/.private/dbow2_catkin/share/dbow2_catkin/cmake/dbow2_catkinConfig.cmake /ws/devel/share/dbow2_catkin/cmake/dbow2_catkinConfig.cmake
+/ws/devel/.private/dbow2_catkin/share/dbow2_catkin/cmake/dbow2-extras.cmake /ws/devel/share/dbow2_catkin/cmake/dbow2-extras.cmake
+/ws/devel/.private/dbow2_catkin/share/dbow2_catkin/cmake/dbow2_catkinConfig-version.cmake /ws/devel/share/dbow2_catkin/cmake/dbow2_catkinConfig-version.cmake
+/ws/devel/.private/dbow2_catkin/include/DBoW2/BowVector.h /ws/devel/include/DBoW2/BowVector.h
+/ws/devel/.private/dbow2_catkin/include/DBoW2/FORB.h /ws/devel/include/DBoW2/FORB.h
+/ws/devel/.private/dbow2_catkin/include/DBoW2/FeatureVector.h /ws/devel/include/DBoW2/FeatureVector.h
+/ws/devel/.private/dbow2_catkin/include/DBoW2/FClass.h /ws/devel/include/DBoW2/FClass.h
+/ws/devel/.private/dbow2_catkin/include/DBoW2/DBoW2.h /ws/devel/include/DBoW2/DBoW2.h
+/ws/devel/.private/dbow2_catkin/include/DBoW2/FSurf64.h /ws/devel/include/DBoW2/FSurf64.h
+/ws/devel/.private/dbow2_catkin/include/DBoW2/ScoringObject.h /ws/devel/include/DBoW2/ScoringObject.h
+/ws/devel/.private/dbow2_catkin/include/DBoW2/DBoW2Config.cmake /ws/devel/include/DBoW2/DBoW2Config.cmake
+/ws/devel/.private/dbow2_catkin/include/DBoW2/TemplatedDatabase.h /ws/devel/include/DBoW2/TemplatedDatabase.h
+/ws/devel/.private/dbow2_catkin/include/DBoW2/FBrief.h /ws/devel/include/DBoW2/FBrief.h
+/ws/devel/.private/dbow2_catkin/include/DBoW2/QueryResults.h /ws/devel/include/DBoW2/QueryResults.h
+/ws/devel/.private/dbow2_catkin/include/DBoW2/TemplatedVocabulary.h /ws/devel/include/DBoW2/TemplatedVocabulary.h
+/ws/devel/.private/dbow2_catkin/lib/libdbow2_catkin.so /ws/devel/lib/libdbow2_catkin.so
+/ws/devel/.private/dbow2_catkin/lib/libDBoW2.so /ws/devel/lib/libDBoW2.so
+/ws/devel/.private/dbow2_catkin/lib/cmake/DBoW2/DBoW2Config.cmake /ws/devel/lib/cmake/DBoW2/DBoW2Config.cmake
+/ws/devel/.private/dbow2_catkin/lib/pkgconfig/dbow2_catkin.pc /ws/devel/lib/pkgconfig/dbow2_catkin.pc

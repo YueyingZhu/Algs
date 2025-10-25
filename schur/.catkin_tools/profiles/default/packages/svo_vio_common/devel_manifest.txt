@@ -1,0 +1,5 @@
+SchurVINS/svo_vio_common
+/ws/devel/.private/svo_vio_common/share/svo_vio_common/cmake/svo_vio_commonConfig-version.cmake /ws/devel/share/svo_vio_common/cmake/svo_vio_commonConfig-version.cmake
+/ws/devel/.private/svo_vio_common/share/svo_vio_common/cmake/svo_vio_commonConfig.cmake /ws/devel/share/svo_vio_common/cmake/svo_vio_commonConfig.cmake
+/ws/devel/.private/svo_vio_common/lib/libsvo_vio_common.so /ws/devel/lib/libsvo_vio_common.so
+/ws/devel/.private/svo_vio_common/lib/pkgconfig/svo_vio_common.pc /ws/devel/lib/pkgconfig/svo_vio_common.pc

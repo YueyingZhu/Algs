@@ -1,0 +1,5 @@
+rpg_svo_pro_open/svo_tracker
+/ws/devel/.private/svo_tracker/share/svo_tracker/cmake/svo_trackerConfig-version.cmake /ws/devel/share/svo_tracker/cmake/svo_trackerConfig-version.cmake
+/ws/devel/.private/svo_tracker/share/svo_tracker/cmake/svo_trackerConfig.cmake /ws/devel/share/svo_tracker/cmake/svo_trackerConfig.cmake
+/ws/devel/.private/svo_tracker/lib/libsvo_tracker.so /ws/devel/lib/libsvo_tracker.so
+/ws/devel/.private/svo_tracker/lib/pkgconfig/svo_tracker.pc /ws/devel/lib/pkgconfig/svo_tracker.pc

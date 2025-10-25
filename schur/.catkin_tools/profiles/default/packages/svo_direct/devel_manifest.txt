@@ -1,0 +1,9 @@
+SchurVINS/svo_direct
+/ws/devel/.private/svo_direct/share/svo_direct/cmake/svo_directConfig.cmake /ws/devel/share/svo_direct/cmake/svo_directConfig.cmake
+/ws/devel/.private/svo_direct/share/svo_direct/cmake/svo_directConfig-version.cmake /ws/devel/share/svo_direct/cmake/svo_directConfig-version.cmake
+/ws/devel/.private/svo_direct/lib/libsvo_direct.so /ws/devel/lib/libsvo_direct.so
+/ws/devel/.private/svo_direct/lib/svo_direct/svo_test_patch_score /ws/devel/lib/svo_direct/svo_test_patch_score
+/ws/devel/.private/svo_direct/lib/svo_direct/svo_test_edgelet_extraction /ws/devel/lib/svo_direct/svo_test_edgelet_extraction
+/ws/devel/.private/svo_direct/lib/svo_direct/svo_test_edgelet_direction /ws/devel/lib/svo_direct/svo_test_edgelet_direction
+/ws/devel/.private/svo_direct/lib/svo_direct/svo_test_feature_alignment /ws/devel/lib/svo_direct/svo_test_feature_alignment
+/ws/devel/.private/svo_direct/lib/pkgconfig/svo_direct.pc /ws/devel/lib/pkgconfig/svo_direct.pc

@@ -1,0 +1,9 @@
+vision_opencv/cv_bridge
+/ws/devel/.private/cv_bridge/share/cv_bridge/cmake/cv_bridgeConfig-version.cmake /ws/devel/share/cv_bridge/cmake/cv_bridgeConfig-version.cmake
+/ws/devel/.private/cv_bridge/share/cv_bridge/cmake/cv_bridgeConfig.cmake /ws/devel/share/cv_bridge/cmake/cv_bridgeConfig.cmake
+/ws/devel/.private/cv_bridge/share/cv_bridge/cmake/cv_bridge-extras.cmake /ws/devel/share/cv_bridge/cmake/cv_bridge-extras.cmake
+/ws/devel/.private/cv_bridge/lib/libcv_bridge.so /ws/devel/lib/libcv_bridge.so
+/ws/devel/.private/cv_bridge/lib/python3/dist-packages/cv_bridge/__init__.py /ws/devel/lib/python3/dist-packages/cv_bridge/__init__.py
+/ws/devel/.private/cv_bridge/lib/python3/dist-packages/cv_bridge/boost/cv_bridge_boost.so /ws/devel/lib/python3/dist-packages/cv_bridge/boost/cv_bridge_boost.so
+/ws/devel/.private/cv_bridge/lib/python3/dist-packages/cv_bridge/boost/__init__.py /ws/devel/lib/python3/dist-packages/cv_bridge/boost/__init__.py
+/ws/devel/.private/cv_bridge/lib/pkgconfig/cv_bridge.pc /ws/devel/lib/pkgconfig/cv_bridge.pc

@@ -1,0 +1,26 @@
+authors: []
+blacklist: []
+build_space: build
+catkin_make_args: []
+cmake_args:
+- -DCMAKE_POLICY_VERSION_MINIMUM=3.5
+- -DPANGOLIN_ENABLE_OPENEXR=OFF
+- -DPANGOLIN_BUILD_EXR=OFF
+- -DCMAKE_CXX_FLAGS=-Wno-error=deprecated-copy
+devel_layout: linked
+devel_space: devel
+extend_path: /opt/ros/noetic
+extends: null
+install: false
+install_space: install
+isolate_install: false
+jobs_args: []
+licenses:
+- TODO
+log_space: logs
+maintainers: []
+make_args: []
+source_space: src
+use_env_cache: false
+use_internal_make_jobserver: true
+whitelist: []

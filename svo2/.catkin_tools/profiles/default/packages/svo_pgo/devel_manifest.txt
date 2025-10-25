@@ -1,0 +1,6 @@
+rpg_svo_pro_open/svo_pgo
+/ws/devel/.private/svo_pgo/share/svo_pgo/cmake/svo_pgoConfig.cmake /ws/devel/share/svo_pgo/cmake/svo_pgoConfig.cmake
+/ws/devel/.private/svo_pgo/share/svo_pgo/cmake/svo_pgoConfig-version.cmake /ws/devel/share/svo_pgo/cmake/svo_pgoConfig-version.cmake
+/ws/devel/.private/svo_pgo/lib/libsvo_pgo.so /ws/devel/lib/libsvo_pgo.so
+/ws/devel/.private/svo_pgo/lib/svo_pgo/test_pgo /ws/devel/lib/svo_pgo/test_pgo
+/ws/devel/.private/svo_pgo/lib/pkgconfig/svo_pgo.pc /ws/devel/lib/pkgconfig/svo_pgo.pc

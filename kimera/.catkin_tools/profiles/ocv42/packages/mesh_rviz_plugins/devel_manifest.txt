@@ -1,0 +1,6 @@
+mesh_rviz_plugins
+/home/zyy/Algs/kimera/devel/.private/mesh_rviz_plugins/cmake.lock /home/zyy/Algs/kimera/devel/./cmake.lock
+/home/zyy/Algs/kimera/devel/.private/mesh_rviz_plugins/share/mesh_rviz_plugins/cmake/mesh_rviz_pluginsConfig.cmake /home/zyy/Algs/kimera/devel/share/mesh_rviz_plugins/cmake/mesh_rviz_pluginsConfig.cmake
+/home/zyy/Algs/kimera/devel/.private/mesh_rviz_plugins/share/mesh_rviz_plugins/cmake/mesh_rviz_pluginsConfig-version.cmake /home/zyy/Algs/kimera/devel/share/mesh_rviz_plugins/cmake/mesh_rviz_pluginsConfig-version.cmake
+/home/zyy/Algs/kimera/devel/.private/mesh_rviz_plugins/lib/libmesh_rviz_plugins.so /home/zyy/Algs/kimera/devel/lib/libmesh_rviz_plugins.so
+/home/zyy/Algs/kimera/devel/.private/mesh_rviz_plugins/lib/pkgconfig/mesh_rviz_plugins.pc /home/zyy/Algs/kimera/devel/lib/pkgconfig/mesh_rviz_plugins.pc

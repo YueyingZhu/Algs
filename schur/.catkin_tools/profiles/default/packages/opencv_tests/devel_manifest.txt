@@ -1,0 +1,4 @@
+vision_opencv/opencv_tests
+/ws/devel/.private/opencv_tests/share/opencv_tests/cmake/opencv_testsConfig-version.cmake /ws/devel/share/opencv_tests/cmake/opencv_testsConfig-version.cmake
+/ws/devel/.private/opencv_tests/share/opencv_tests/cmake/opencv_testsConfig.cmake /ws/devel/share/opencv_tests/cmake/opencv_testsConfig.cmake
+/ws/devel/.private/opencv_tests/lib/pkgconfig/opencv_tests.pc /ws/devel/lib/pkgconfig/opencv_tests.pc

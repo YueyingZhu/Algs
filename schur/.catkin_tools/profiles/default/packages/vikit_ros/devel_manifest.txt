@@ -1,0 +1,5 @@
+SchurVINS/vikit/vikit_ros
+/ws/devel/.private/vikit_ros/share/vikit_ros/cmake/vikit_rosConfig.cmake /ws/devel/share/vikit_ros/cmake/vikit_rosConfig.cmake
+/ws/devel/.private/vikit_ros/share/vikit_ros/cmake/vikit_rosConfig-version.cmake /ws/devel/share/vikit_ros/cmake/vikit_rosConfig-version.cmake
+/ws/devel/.private/vikit_ros/lib/libvikit_ros.so /ws/devel/lib/libvikit_ros.so
+/ws/devel/.private/vikit_ros/lib/pkgconfig/vikit_ros.pc /ws/devel/lib/pkgconfig/vikit_ros.pc

@@ -1,0 +1,4 @@
+minkindr/minkindr
+/ws/devel/.private/minkindr/share/minkindr/cmake/minkindrConfig-version.cmake /ws/devel/share/minkindr/cmake/minkindrConfig-version.cmake
+/ws/devel/.private/minkindr/share/minkindr/cmake/minkindrConfig.cmake /ws/devel/share/minkindr/cmake/minkindrConfig.cmake
+/ws/devel/.private/minkindr/lib/pkgconfig/minkindr.pc /ws/devel/lib/pkgconfig/minkindr.pc

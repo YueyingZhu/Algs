@@ -1,0 +1,5 @@
+SchurVINS/vikit/vikit_solver
+/ws/devel/.private/vikit_solver/share/vikit_solver/cmake/vikit_solverConfig.cmake /ws/devel/share/vikit_solver/cmake/vikit_solverConfig.cmake
+/ws/devel/.private/vikit_solver/share/vikit_solver/cmake/vikit_solverConfig-version.cmake /ws/devel/share/vikit_solver/cmake/vikit_solverConfig-version.cmake
+/ws/devel/.private/vikit_solver/lib/libvikit_solver.so /ws/devel/lib/libvikit_solver.so
+/ws/devel/.private/vikit_solver/lib/pkgconfig/vikit_solver.pc /ws/devel/lib/pkgconfig/vikit_solver.pc

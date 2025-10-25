@@ -1,0 +1,5 @@
+fast_neon
+/ws/devel/.private/fast/share/fast/cmake/fastConfig.cmake /ws/devel/share/fast/cmake/fastConfig.cmake
+/ws/devel/.private/fast/share/fast/cmake/fastConfig-version.cmake /ws/devel/share/fast/cmake/fastConfig-version.cmake
+/ws/devel/.private/fast/lib/libfast.so /ws/devel/lib/libfast.so
+/ws/devel/.private/fast/lib/pkgconfig/fast.pc /ws/devel/lib/pkgconfig/fast.pc

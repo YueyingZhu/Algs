@@ -1,0 +1,5 @@
+SchurVINS/svo_common
+/ws/devel/.private/svo_common/share/svo_common/cmake/svo_commonConfig.cmake /ws/devel/share/svo_common/cmake/svo_commonConfig.cmake
+/ws/devel/.private/svo_common/share/svo_common/cmake/svo_commonConfig-version.cmake /ws/devel/share/svo_common/cmake/svo_commonConfig-version.cmake
+/ws/devel/.private/svo_common/lib/libsvo_common.so /ws/devel/lib/libsvo_common.so
+/ws/devel/.private/svo_common/lib/pkgconfig/svo_common.pc /ws/devel/lib/pkgconfig/svo_common.pc

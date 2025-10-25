@@ -1,0 +1,5 @@
+SchurVINS/rpg_common
+/ws/devel/.private/rpg_common/share/rpg_common/cmake/rpg_commonConfig.cmake /ws/devel/share/rpg_common/cmake/rpg_commonConfig.cmake
+/ws/devel/.private/rpg_common/share/rpg_common/cmake/rpg_commonConfig-version.cmake /ws/devel/share/rpg_common/cmake/rpg_commonConfig-version.cmake
+/ws/devel/.private/rpg_common/lib/librpg_common.so /ws/devel/lib/librpg_common.so
+/ws/devel/.private/rpg_common/lib/pkgconfig/rpg_common.pc /ws/devel/lib/pkgconfig/rpg_common.pc

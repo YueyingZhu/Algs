@@ -1,0 +1,7 @@
+SchurVINS/svo_online_loopclosing
+/ws/devel/.private/svo_online_loopclosing/share/svo_online_loopclosing/cmake/svo_online_loopclosingConfig-version.cmake /ws/devel/share/svo_online_loopclosing/cmake/svo_online_loopclosingConfig-version.cmake
+/ws/devel/.private/svo_online_loopclosing/share/svo_online_loopclosing/cmake/svo_online_loopclosingConfig.cmake /ws/devel/share/svo_online_loopclosing/cmake/svo_online_loopclosingConfig.cmake
+/ws/devel/.private/svo_online_loopclosing/lib/libbow.so /ws/devel/lib/libbow.so
+/ws/devel/.private/svo_online_loopclosing/lib/libsvo_online_loopclosing.so /ws/devel/lib/libsvo_online_loopclosing.so
+/ws/devel/.private/svo_online_loopclosing/lib/svo_online_loopclosing/createvoc /ws/devel/lib/svo_online_loopclosing/createvoc
+/ws/devel/.private/svo_online_loopclosing/lib/pkgconfig/svo_online_loopclosing.pc /ws/devel/lib/pkgconfig/svo_online_loopclosing.pc

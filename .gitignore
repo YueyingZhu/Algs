@@ -49,19 +49,19 @@ Thumbs.db
 *.bin
 *.bag
 
-# 子项目Git仓库（这些应该作为子模块处理）
-# 暂时忽略这些目录，避免嵌入Git仓库的问题
-DM_VIO/
-OpenVINS/
-VINS-Fusion/
-airslam/
-basalt/
-dso/
-kimera/
-msckf/
-orb3/
-orbslam3/
-plslam/
-schur/
-svo2/
-vins/
+# 子项目Git仓库（包含您的修改）
+# 这些目录包含您的Docker配置、标定文件和修改
+# 我们直接包含这些修改，因为它们代表了您的重要工作
+
+# 只忽略构建产物，保留源代码和配置
+**/build/
+**/devel/
+**/install/
+**/log/
+**/logs/
+**/*.o
+**/*.so
+**/*.a
+**/*.cmake
+**/*.make
+**/*.internal

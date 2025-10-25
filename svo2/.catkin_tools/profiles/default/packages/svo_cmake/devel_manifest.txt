@@ -1,0 +1,5 @@
+rpg_svo_pro_open/svo_cmake
+/ws/devel/.private/svo_cmake/share/svo_cmake/cmake/svo_cmakeConfig-version.cmake /ws/devel/share/svo_cmake/cmake/svo_cmakeConfig-version.cmake
+/ws/devel/.private/svo_cmake/share/svo_cmake/cmake/svo_cmakeConfig.cmake /ws/devel/share/svo_cmake/cmake/svo_cmakeConfig.cmake
+/ws/devel/.private/svo_cmake/share/svo_cmake/cmake/svo_cmake-extras.cmake /ws/devel/share/svo_cmake/cmake/svo_cmake-extras.cmake
+/ws/devel/.private/svo_cmake/lib/pkgconfig/svo_cmake.pc /ws/devel/lib/pkgconfig/svo_cmake.pc

@@ -1,0 +1,5 @@
+SchurVINS/vikit/vikit_cameras
+/ws/devel/.private/vikit_cameras/share/vikit_cameras/cmake/vikit_camerasConfig.cmake /ws/devel/share/vikit_cameras/cmake/vikit_camerasConfig.cmake
+/ws/devel/.private/vikit_cameras/share/vikit_cameras/cmake/vikit_camerasConfig-version.cmake /ws/devel/share/vikit_cameras/cmake/vikit_camerasConfig-version.cmake
+/ws/devel/.private/vikit_cameras/lib/libvikit_cameras.so /ws/devel/lib/libvikit_cameras.so
+/ws/devel/.private/vikit_cameras/lib/pkgconfig/vikit_cameras.pc /ws/devel/lib/pkgconfig/vikit_cameras.pc

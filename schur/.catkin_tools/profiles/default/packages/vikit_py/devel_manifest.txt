@@ -1,0 +1,5 @@
+SchurVINS/vikit/vikit_py
+/ws/devel/.private/vikit_py/share/vikit_py/cmake/vikit_pyConfig.cmake /ws/devel/share/vikit_py/cmake/vikit_pyConfig.cmake
+/ws/devel/.private/vikit_py/share/vikit_py/cmake/vikit_pyConfig-version.cmake /ws/devel/share/vikit_py/cmake/vikit_pyConfig-version.cmake
+/ws/devel/.private/vikit_py/lib/python3/dist-packages/vikit_py/__init__.py /ws/devel/lib/python3/dist-packages/vikit_py/__init__.py
+/ws/devel/.private/vikit_py/lib/pkgconfig/vikit_py.pc /ws/devel/lib/pkgconfig/vikit_py.pc

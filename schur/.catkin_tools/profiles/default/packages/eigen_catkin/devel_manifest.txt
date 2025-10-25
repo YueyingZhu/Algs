@@ -1,0 +1,5 @@
+eigen_catkin
+/ws/devel/.private/eigen_catkin/share/eigen_catkin/cmake/eigen_catkinConfig.cmake /ws/devel/share/eigen_catkin/cmake/eigen_catkinConfig.cmake
+/ws/devel/.private/eigen_catkin/share/eigen_catkin/cmake/eigen_catkinConfig-version.cmake /ws/devel/share/eigen_catkin/cmake/eigen_catkinConfig-version.cmake
+/ws/devel/.private/eigen_catkin/share/eigen_catkin/cmake/eigen-extras.cmake /ws/devel/share/eigen_catkin/cmake/eigen-extras.cmake
+/ws/devel/.private/eigen_catkin/lib/pkgconfig/eigen_catkin.pc /ws/devel/lib/pkgconfig/eigen_catkin.pc

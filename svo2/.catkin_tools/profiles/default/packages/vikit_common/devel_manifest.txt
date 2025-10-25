@@ -1,0 +1,7 @@
+rpg_svo_pro_open/vikit/vikit_common
+/ws/devel/.private/vikit_common/share/vikit_common/cmake/vikit_commonConfig.cmake /ws/devel/share/vikit_common/cmake/vikit_commonConfig.cmake
+/ws/devel/.private/vikit_common/share/vikit_common/cmake/vikit_commonConfig-version.cmake /ws/devel/share/vikit_common/cmake/vikit_commonConfig-version.cmake
+/ws/devel/.private/vikit_common/lib/libvikit_common.so /ws/devel/lib/libvikit_common.so
+/ws/devel/.private/vikit_common/lib/pkgconfig/vikit_common.pc /ws/devel/lib/pkgconfig/vikit_common.pc
+/ws/devel/.private/vikit_common/lib/vikit_common/vikit_test_common /ws/devel/lib/vikit_common/vikit_test_common
+/ws/devel/.private/vikit_common/lib/vikit_common/vikit_test_timer /ws/devel/lib/vikit_common/vikit_test_timer

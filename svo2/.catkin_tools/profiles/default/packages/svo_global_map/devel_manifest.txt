@@ -1,0 +1,5 @@
+rpg_svo_pro_open/svo_global_map
+/ws/devel/.private/svo_global_map/share/svo_global_map/cmake/svo_global_mapConfig.cmake /ws/devel/share/svo_global_map/cmake/svo_global_mapConfig.cmake
+/ws/devel/.private/svo_global_map/share/svo_global_map/cmake/svo_global_mapConfig-version.cmake /ws/devel/share/svo_global_map/cmake/svo_global_mapConfig-version.cmake
+/ws/devel/.private/svo_global_map/lib/libsvo_global_map.so /ws/devel/lib/libsvo_global_map.so
+/ws/devel/.private/svo_global_map/lib/pkgconfig/svo_global_map.pc /ws/devel/lib/pkgconfig/svo_global_map.pc
